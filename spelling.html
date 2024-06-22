@@ -189,17 +189,22 @@
         resultElement.className = 'correct';
         saveTestResult(words[currentWordIndex].word, true, now);
 
-        // Check if the current word is the last word in the group
-        const wordIndex = words[currentWordIndex].index + 1;
-        if ((wordIndex - (groupNumber - 1) * 100) === words.length) {
-          showCompletionMessage();
-        }
-
         currentWordIndex++;
         if (!testedWordsToday.has(words[currentWordIndex].word)) {
           todayTestedCount++;
           testedWordsToday.add(words[currentWordIndex].word);
         }
+
+        const testedWords = words.filter(w => w.totalTests > 0).length;
+        const notTestedWords = words.length - testedWords;
+        const lastTested = words.reduce((latest, w) => {
+          if (w.lastTested && (!latest || new Date(w.lastTested) > new Date(latest))) {
+            return w.lastTested;
+          }
+          return latest;
+        }, null);
+        const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
+        updateGroupStats(testedWords, notTestedWords, todayTestedCount, lastTestedFormatted);
 
         if (currentWordIndex < words.length) {
           setTimeout(displayWord, 500);
@@ -214,16 +219,6 @@
         addToWordReview(words[currentWordIndex].word);
       }
       document.getElementById('todayStats').innerText = `今天测试的单词数: ${todayTestedCount}`;
-      const testedWords = words.filter(w => w.totalTests > 0).length;
-      const notTestedWords = words.length - testedWords;
-      const lastTested = words.reduce((latest, w) => {
-        if (w.lastTested && (!latest || new Date(w.lastTested) > new Date(latest))) {
-          return w.lastTested;
-        }
-        return latest;
-      }, null);
-      const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
-      updateGroupStats(testedWords, notTestedWords, todayTestedCount, lastTestedFormatted);
     };
 
     window.retryWord = function() {
