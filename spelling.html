@@ -204,6 +204,8 @@
           return latest;
         }, null);
         const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
+        
+        // Update stats
         updateGroupStats(testedWords, notTestedWords, todayTestedCount, lastTestedFormatted);
 
         if (currentWordIndex < words.length) {
@@ -300,6 +302,17 @@
             testedWordsToday.add(word);
             document.getElementById('todayStats').innerText = `今天测试的单词数: ${testedWordsToday.size}`;
           }
+          // Update stats after saving result
+          const testedWords = words.filter(w => w.totalTests > 0).length;
+          const notTestedWords = words.length - testedWords;
+          const lastTested = words.reduce((latest, w) => {
+            if (w.lastTested && (!latest || new Date(w.lastTested) > new Date(latest))) {
+              return w.lastTested;
+            }
+            return latest;
+          }, null);
+          const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
+          updateGroupStats(testedWords, notTestedWords, todayTestedCount, lastTestedFormatted);
         });
       }).catch(error => {
         console.error("Error updating test result: ", error);
