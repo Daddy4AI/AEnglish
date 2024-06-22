@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Spelling Test - Group #</title>
+  <title>Spelling Test - Group Review</title>
   <style>
     body {
       display: flex;
@@ -91,46 +91,45 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       const urlParams = new URLSearchParams(window.location.search);
-      groupNumber = parseInt(urlParams.get('group'));
-      document.title = `Spelling Test - Group ${groupNumber}`;
-      document.getElementById('groupNumber').innerText = groupNumber;
+      groupNumber = urlParams.get('group');
+      document.title = groupNumber === 'Review' ? 'Spelling Test - Group Review' : `Spelling Test - Group ${groupNumber}`;
+      document.getElementById('groupNumber').innerText = groupNumber === 'Review' ? 'Review' : groupNumber;
       const wordListRef = ref(database, 'wordlist');
       const testResultsRef = ref(database, 'testResults');
       const wordReviewRef = ref(database, 'wordreview');
       const todayDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
 
-      get(wordListRef).then(snapshot => {
-        const allWords = snapshot.val() || [];
-        let groupWords;
-
-        if (groupNumber === 'Review') {
-          get(wordReviewRef).then(reviewSnapshot => {
-            groupWords = reviewSnapshot.val() || [];
-            loadWords(groupWords, testResultsRef, todayDate, allWords);
-          });
-        } else {
-          groupWords = allWords.slice((groupNumber - 1) * 100, groupNumber * 100);
-          loadWords(groupWords, testResultsRef, todayDate, allWords);
-        }
-      }).catch(error => {
-        console.error("Error getting data: ", error);
-      });
+      if (groupNumber === 'Review') {
+        get(wordReviewRef).then(reviewSnapshot => {
+          const reviewWords = reviewSnapshot.val() || [];
+          loadWords(reviewWords, testResultsRef, todayDate);
+        }).catch(error => {
+          console.error("Error getting data: ", error);
+        });
+      } else {
+        get(wordListRef).then(snapshot => {
+          const allWords = snapshot.val() || [];
+          const groupWords = allWords.slice((groupNumber - 1) * 100, groupNumber * 100);
+          loadWords(groupWords, testResultsRef, todayDate);
+        }).catch(error => {
+          console.error("Error getting data: ", error);
+        });
+      }
     });
 
-    function loadWords(groupWords, testResultsRef, todayDate, allWords) {
+    function loadWords(groupWords, testResultsRef, todayDate) {
       Promise.all(groupWords.map((word, index) => {
         return get(child(testResultsRef, word)).then(resultSnapshot => {
           const resultData = resultSnapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0, lastTested: null };
           if (resultData.lastTested && resultData.lastTested.startsWith(todayDate)) {
             testedWordsToday.add(word);
           }
-          const originalIndex = allWords.indexOf(word);
-          return { word, index: originalIndex, ...resultData };
+          return { word, ...resultData };
         });
       })).then(wordData => {
         words = wordData.sort((a, b) => {
           if (a.totalTests === 0 && b.totalTests === 0) {
-            return a.index - b.index;
+            return a.word.localeCompare(b.word);
           }
           if (a.totalTests === 0) return -1;
           if (b.totalTests === 0) return 1;
@@ -163,8 +162,7 @@
     window.displayWord = function() {
       if (words.length === 0) return;
       const word = words[currentWordIndex].word;
-      const wordIndex = words[currentWordIndex].index + 1;
-      const groupRelativeIndex = wordIndex - (groupNumber - 1) * 100;
+      const groupRelativeIndex = currentWordIndex + 1;
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.lang = 'en-US';
       utterance.rate = 0.8; // Slow down the speech rate
@@ -204,8 +202,6 @@
           return latest;
         }, null);
         const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
-        
-        // Update stats
         updateGroupStats(testedWords, notTestedWords, todayTestedCount, lastTestedFormatted);
 
         if (currentWordIndex < words.length) {
