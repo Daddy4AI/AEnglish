@@ -53,6 +53,11 @@
       padding: 8px;
       text-align: center;
     }
+    .stats-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
   </style>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
@@ -174,23 +179,9 @@
       const groupDiv = document.createElement('div');
       groupDiv.className = `group review ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
       groupDiv.innerHTML = `<h2>Group Review</h2>
-                            <p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
-                            <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
-                            <p>测试时间: ${reviewGroupData.lastTested}</p>
                             <button onclick="startTest('Review')">Start Test</button>`;
-
-      const errorCounts = { '>3': 0, '3': 0, '2': 0, '1': 0, 'all': reviewGroupData.totalWords };
-      reviewGroupData.wordData.forEach(word => {
-        if (word.incorrectCount > 3) {
-          errorCounts['>3']++;
-        } else if (word.incorrectCount === 3) {
-          errorCounts['3']++;
-        } else if (word.incorrectCount === 2) {
-          errorCounts['2']++;
-        } else if (word.incorrectCount === 1) {
-          errorCounts['1']++;
-        }
-      });
+      const statsContainer = document.createElement('div');
+      statsContainer.className = 'stats-container';
 
       const table = document.createElement('table');
       table.innerHTML = `
@@ -203,27 +194,35 @@
         <tbody>
           <tr>
             <td>>3次</td>
-            <td>${errorCounts['>3']}</td>
+            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 3).length}</td>
           </tr>
           <tr>
             <td>3次</td>
-            <td>${errorCounts['3']}</td>
+            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 3).length}</td>
           </tr>
           <tr>
             <td>2次</td>
-            <td>${errorCounts['2']}</td>
+            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 2).length}</td>
           </tr>
           <tr>
             <td>1次</td>
-            <td>${errorCounts['1']}</td>
+            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 1).length}</td>
           </tr>
           <tr>
             <td>所有单词</td>
-            <td>${errorCounts['all']}</td>
+            <td>${reviewGroupData.totalWords}</td>
           </tr>
         </tbody>
       `;
-      groupDiv.appendChild(table);
+      statsContainer.appendChild(table);
+
+      const stats = document.createElement('div');
+      stats.innerHTML = `<p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
+                         <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
+                         <p>测试时间: ${reviewGroupData.lastTested}</p>`;
+      statsContainer.appendChild(stats);
+
+      groupDiv.appendChild(statsContainer);
       container.prepend(groupDiv);
     }
 
@@ -237,3 +236,4 @@
   <div id="groups" class="groups-container"></div>
 </body>
 </html>
+
