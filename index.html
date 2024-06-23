@@ -22,9 +22,6 @@
       box-sizing: border-box;
       background-color: rgba(255, 255, 255, 0.8);
     }
-    .group.review {
-      flex: 1 1 42%; /* Twice the width of other groups */
-    }
     .tested {
       border-color: lightblue;
     }
@@ -43,16 +40,6 @@
       font-size: 16px;
       padding: 10px;
       margin-top: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #000;
-      padding: 8px;
-      text-align: center;
     }
     .stats-container {
       display: flex;
@@ -152,10 +139,9 @@
                 testedWords,
                 totalWords: reviewWords.length,
                 incorrectWords,
-                lastTested: lastTestedFormatted,
-                wordData
+                lastTested: lastTestedFormatted
               };
-              displayGroupReview(reviewGroupData);
+              displayGroups([reviewGroupData, ...groups]);
             });
           }
         });
@@ -179,55 +165,6 @@
         }
         container.appendChild(groupDiv);
       });
-    }
-
-    function displayGroupReview(reviewGroupData) {
-      const container = document.getElementById('groups');
-      const groupDiv = document.createElement('div');
-      groupDiv.className = `group review ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
-      groupDiv.innerHTML = `<h2>Group Review</h2>`;
-      const statsContainer = document.createElement('div');
-      statsContainer.className = 'stats-container';
-
-      const leftStats = document.createElement('div');
-      leftStats.className = 'left-stats';
-      leftStats.innerHTML = `<p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
-                             <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
-                             <p>测试时间: ${reviewGroupData.lastTested}</p>
-                             <button onclick="startTest('Review')">Start Test</button>`;
-
-      const rightTable = document.createElement('div');
-      rightTable.className = 'right-table';
-      const table = document.createElement('table');
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>错误次数</th>
-            <th>>3次</th>
-            <th>3次</th>
-            <th>2次</th>
-            <th>1次</th>
-            <th>全部</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>单词数量</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 3).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 3).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 2).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 1).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 0).length}</td>
-          </tr>
-        </tbody>
-      `;
-      rightTable.appendChild(table);
-
-      statsContainer.appendChild(leftStats);
-      statsContainer.appendChild(rightTable);
-
-      groupDiv.appendChild(statsContainer);
-      container.prepend(groupDiv);
     }
 
     window.startTest = function(groupNumber) {
