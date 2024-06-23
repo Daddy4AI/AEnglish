@@ -202,29 +202,21 @@
       table.innerHTML = `
         <thead>
           <tr>
-            <th>错误次数</th>
-            <th>单词数量</th>
+            <th></th>
+            <th>>3次</th>
+            <th>3次</th>
+            <th>2次</th>
+            <th>1次</th>
+            <th>所有单词</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>>3次</td>
+            <td>单词数量</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 3).length}</td>
-          </tr>
-          <tr>
-            <td>3次</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 3).length}</td>
-          </tr>
-          <tr>
-            <td>2次</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 2).length}</td>
-          </tr>
-          <tr>
-            <td>1次</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 1).length}</td>
-          </tr>
-          <tr>
-            <td>所有单词</td>
             <td>${reviewGroupData.totalWords}</td>
           </tr>
         </tbody>
