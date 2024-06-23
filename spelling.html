@@ -91,8 +91,8 @@
       get(wordListRef).then(snapshot => {
         const words = snapshot.val() || [];
         const groups = [];
-        for (let i = 0; i < words.length; i += 100) {
-          groups.push(words.slice(i, i + 100));
+        for (let i = 0; i < words.length; i += 20) {  // 修改这一行
+          groups.push(words.slice(i, i + 20));  // 修改这一行
         }
         Promise.all(groups.map((group, index) => {
           return Promise.all(group.map(word => {
@@ -112,8 +112,8 @@
             const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
             return {
               index: index + 1,
-              start: index * 100 + 1,
-              end: index * 100 + group.length,
+              start: index * 20 + 1,  // 修改这一行
+              end: index * 20 + group.length,  // 修改这一行
               testedWords,
               totalWords: group.length,
               incorrectWords,
@@ -202,12 +202,12 @@
       table.innerHTML = `
         <thead>
           <tr>
-            <th></th>
+            <th>错误次数</th>
             <th>>3次</th>
             <th>3次</th>
             <th>2次</th>
             <th>1次</th>
-            <th>所有单词</th>
+            <th>全部</th>
           </tr>
         </thead>
         <tbody>
@@ -217,7 +217,7 @@
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 3).length}</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 2).length}</td>
             <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 1).length}</td>
-            <td>${reviewGroupData.totalWords}</td>
+            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 0).length}</td>
           </tr>
         </tbody>
       `;
