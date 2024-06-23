@@ -42,6 +42,7 @@
     button {
       font-size: 16px;
       padding: 10px;
+      margin-top: 20px;
     }
     table {
       width: 100%;
@@ -57,6 +58,12 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+    }
+    .left-stats {
+      flex: 1;
+    }
+    .right-table {
+      flex: 1;
     }
   </style>
   <script type="module">
@@ -178,11 +185,19 @@
       const container = document.getElementById('groups');
       const groupDiv = document.createElement('div');
       groupDiv.className = `group review ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
-      groupDiv.innerHTML = `<h2>Group Review</h2>
-                            <button onclick="startTest('Review')">Start Test</button>`;
+      groupDiv.innerHTML = `<h2>Group Review</h2>`;
       const statsContainer = document.createElement('div');
       statsContainer.className = 'stats-container';
 
+      const leftStats = document.createElement('div');
+      leftStats.className = 'left-stats';
+      leftStats.innerHTML = `<p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
+                             <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
+                             <p>测试时间: ${reviewGroupData.lastTested}</p>
+                             <button onclick="startTest('Review')">Start Test</button>`;
+
+      const rightTable = document.createElement('div');
+      rightTable.className = 'right-table';
       const table = document.createElement('table');
       table.innerHTML = `
         <thead>
@@ -214,13 +229,10 @@
           </tr>
         </tbody>
       `;
-      statsContainer.appendChild(table);
+      rightTable.appendChild(table);
 
-      const stats = document.createElement('div');
-      stats.innerHTML = `<p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
-                         <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
-                         <p>测试时间: ${reviewGroupData.lastTested}</p>`;
-      statsContainer.appendChild(stats);
+      statsContainer.appendChild(leftStats);
+      statsContainer.appendChild(rightTable);
 
       groupDiv.appendChild(statsContainer);
       container.prepend(groupDiv);
@@ -236,4 +248,3 @@
   <div id="groups" class="groups-container"></div>
 </body>
 </html>
-
