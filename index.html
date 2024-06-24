@@ -44,26 +44,55 @@
       padding: 10px;
       margin-top: 20px;
     }
-    table {
+    .progress-bar {
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
+      background-color: #f3f3f3;
+      border: 1px solid #ccc;
+      margin-top: 5px;
     }
-    th, td {
-      border: 1px solid #000;
-      padding: 8px;
+    .progress {
+      height: 20px;
       text-align: center;
+      line-height: 20px;
+      color: white;
     }
-    .stats-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+    .progress.blue {
+      background-color: blue;
     }
-    .left-stats {
-      flex: 1;
+    .progress.red {
+      background-color: red;
     }
-    .right-table {
-      flex: 1;
+    .modal {
+      display: none; 
+      position: fixed; 
+      z-index: 1; 
+      padding-top: 60px; 
+      left: 0;
+      top: 0;
+      width: 100%; 
+      height: 100%; 
+      overflow: auto; 
+      background-color: rgb(0,0,0); 
+      background-color: rgba(0,0,0,0.4); 
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 50%; 
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
     }
   </style>
   <script type="module">
@@ -117,7 +146,8 @@
               testedWords,
               totalWords: group.length,
               incorrectWords,
-              lastTested: lastTestedFormatted
+              lastTested: lastTestedFormatted,
+              wordData
             };
           });
         })).then(groupData => {
@@ -169,11 +199,16 @@
       groups.forEach(group => {
         const groupDiv = document.createElement('div');
         groupDiv.className = `group ${group.testedWords > 0 ? 'tested' : 'not-tested'}`;
+        const testProgress = (group.testedWords / group.totalWords) * 100;
+        const incorrectProgress = (group.incorrectWords / group.testedWords) * 100;
         groupDiv.innerHTML = `<h2>Group ${group.index}</h2>
                               <p>测试进程: ${group.testedWords}/${group.totalWords}</p>
+                              <div class="progress-bar"><div class="progress blue" style="width:${testProgress}%">${testProgress}%</div></div>
                               <p>错误情况: ${group.incorrectWords}/${group.testedWords}</p>
+                              <div class="progress-bar"><div class="progress ${incorrectProgress > 25 ? 'red' : 'blue'}" style="width:${incorrectProgress}%">${incorrectProgress}%</div></div>
                               <p>测试时间: ${group.lastTested}</p>
-                              <button onclick="startTest(${group.index})">Start Test</button>`;
+                              <button onclick="startTest(${group.index})">Start Test</button>
+                              <button onclick="showWords(${group.index})">查看单词</button>`;
         if (group.testedWords === group.totalWords) {
           groupDiv.innerHTML += `<span style="color: green; font-weight: bold;">已经完成第一次测试！</span>`;
         }
@@ -185,53 +220,63 @@
       const container = document.getElementById('groups');
       const groupDiv = document.createElement('div');
       groupDiv.className = `group review ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
-      groupDiv.innerHTML = `<h2>Group Review</h2>`;
-      const statsContainer = document.createElement('div');
-      statsContainer.className = 'stats-container';
-
-      const leftStats = document.createElement('div');
-      leftStats.className = 'left-stats';
-      leftStats.innerHTML = `<p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
-                             <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
-                             <p>测试时间: ${reviewGroupData.lastTested}</p>
-                             <button onclick="startTest('Review')">Start Test</button>`;
-
-      const rightTable = document.createElement('div');
-      rightTable.className = 'right-table';
-      const table = document.createElement('table');
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>错误次数</th>
-            <th>>3次</th>
-            <th>3次</th>
-            <th>2次</th>
-            <th>1次</th>
-            <th>全部</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>单词数量</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 3).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 3).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 2).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount === 1).length}</td>
-            <td>${reviewGroupData.wordData.filter(word => word.incorrectCount > 0).length}</td>
-          </tr>
-        </tbody>
-      `;
-      rightTable.appendChild(table);
-
-      statsContainer.appendChild(leftStats);
-      statsContainer.appendChild(rightTable);
-
-      groupDiv.appendChild(statsContainer);
+      const testProgress = (reviewGroupData.testedWords / reviewGroupData.totalWords) * 100;
+      const incorrectProgress = (reviewGroupData.incorrectWords / reviewGroupData.testedWords) * 100;
+      groupDiv.innerHTML = `<h2>Group Review</h2>
+                            <p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
+                            <div class="progress-bar"><div class="progress blue" style="width:${testProgress}%">${testProgress}%</div></div>
+                            <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
+                            <div class="progress-bar"><div class="progress ${incorrectProgress > 25 ? 'red' : 'blue'}" style="width:${incorrectProgress}%">${incorrectProgress}%</div></div>
+                            <p>测试时间: ${reviewGroupData.lastTested}</p>
+                            <button onclick="startTest('Review')">Start Test</button>
+                            <button onclick="showWords('Review')">查看单词</button>`;
       container.prepend(groupDiv);
     }
 
     window.startTest = function(groupNumber) {
       window.location.href = `spelling.html?group=${groupNumber}`;
+    };
+
+    window.showWords = function(groupNumber) {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `<div class="modal-content">
+                          <span class="close" onclick="closeModal(this)">&times;</span>
+                          <h2>Group ${groupNumber} 单词列表</h2>
+                          <table id="wordTable"></table>
+                         </div>`;
+      document.body.appendChild(modal);
+
+      const wordListRef = ref(database, 'wordlist');
+      get(wordListRef).then(snapshot => {
+        const words = snapshot.val() || [];
+        let groupWords;
+        if (groupNumber === 'Review') {
+          groupWords = words; // Add logic to get review words
+        } else {
+          const start = (groupNumber - 1) * 20;
+          const end = groupNumber * 20;
+          groupWords = words.slice(start, end);
+        }
+
+        const wordTable = document.getElementById('wordTable');
+        groupWords.forEach((word, index) => {
+          const row = wordTable.insertRow();
+          const cell1 = row.insertCell(0);
+          const cell2 = row.insertCell(1);
+          const cell3 = row.insertCell(2);
+          cell1.innerHTML = start + index + 1;
+          cell2.innerHTML = word;
+          cell3.innerHTML = `<a href="https://www.merriam-webster.com/dictionary/${word}" target="_blank">Dictionary</a>`;
+        });
+
+        modal.style.display = 'block';
+      });
+    };
+
+    window.closeModal = function(element) {
+      element.closest('.modal').style.display = 'none';
+      document.body.removeChild(element.closest('.modal'));
     };
   </script>
 </head>
