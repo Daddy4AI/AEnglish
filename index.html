@@ -18,12 +18,9 @@
       border: 2px solid;
       padding: 20px;
       margin: 10px;
-      flex: 1 1 21%; /* Adjusted to fit 4 groups in a row */
+      flex: 1 1 21%;
       box-sizing: border-box;
       background-color: rgba(255, 255, 255, 0.8);
-    }
-    .group.review {
-      border-color: lightgreen;
     }
     .tested {
       border-color: lightblue;
@@ -42,61 +39,74 @@
     button {
       font-size: 16px;
       padding: 10px;
-      margin-top: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #000;
-      padding: 8px;
-      text-align: center;
     }
     .progress-bar {
-      height: 20px;
       width: 100%;
-      background-color: #e0e0e0;
-      border-radius: 5px;
-      overflow: hidden;
-      margin-top: 10px;
+      background-color: #f3f3f3;
+      border: 1px solid #ccc;
+      height: 20px;
+      margin-top: 5px;
     }
-    .progress-bar-inner {
+    .progress {
       height: 100%;
-      line-height: 20px;
-      color: white;
-      text-align: center;
     }
-    .progress-bar-blue {
+    .blue {
       background-color: blue;
     }
-    .progress-bar-red {
+    .red {
       background-color: red;
     }
     .modal {
       display: none;
       position: fixed;
-      z-index: 1;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
+      z-index: 1000;
+      left: 50%;
+      top: 50%;
+      width: 50%;
+      height: 50%;
       overflow: auto;
-      background-color: rgba(0,0,0,0.5);
+      background-color: white;
+      border: 2px solid #888;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -50%);
+      padding: 20px;
     }
     .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 50%;
+      margin: 15px 0;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .word-list-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .word-list-table th,
+    .word-list-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .word-list-table th {
+      background-color: #f2f2f2;
+    }
+    .incorrect {
+      color: red;
     }
   </style>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
     import { getDatabase, ref, get, child } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
-
+    
     const firebaseConfig = {
       apiKey: "AIzaSyCmlxG5PBVji_T3dAGJT4L675NNWCyRhqU",
       authDomain: "beebee-c1ccc.firebaseapp.com",
@@ -118,8 +128,8 @@
       get(wordListRef).then(snapshot => {
         const words = snapshot.val() || [];
         const groups = [];
-        for (let i = 0; i < words.length; i += 20) {
-          groups.push(words.slice(i, i + 20));
+        for (let i = 0; i < words.length; i += 10) {
+          groups.push(words.slice(i, i + 10));
         }
         Promise.all(groups.map((group, index) => {
           return Promise.all(group.map(word => {
@@ -139,13 +149,12 @@
             const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
             return {
               index: index + 1,
-              start: index * 20 + 1,
-              end: index * 20 + group.length,
+              start: index * 10 + 1,
+              end: index * 10 + group.length,
               testedWords,
               totalWords: group.length,
               incorrectWords,
-              lastTested: lastTestedFormatted,
-              wordData
+              lastTested: lastTestedFormatted
             };
           });
         })).then(groupData => {
@@ -180,10 +189,9 @@
                 testedWords,
                 totalWords: reviewWords.length,
                 incorrectWords,
-                lastTested: lastTestedFormatted,
-                wordData
+                lastTested: lastTestedFormatted
               };
-              displayGroups([reviewGroupData]);
+              displayGroupReview(reviewGroupData);
             });
           }
         });
@@ -194,61 +202,135 @@
 
     function displayGroups(groups) {
       const container = document.getElementById('groups');
-      container.innerHTML = '';
       groups.forEach(group => {
+        const testedProgress = (group.testedWords / group.totalWords) * 100;
+        const incorrectProgress = group.testedWords > 0 ? (group.incorrectWords / group.testedWords) * 100 : 0;
+        const incorrectBarColor = incorrectProgress > 25 ? 'red' : 'blue';
+
         const groupDiv = document.createElement('div');
-        groupDiv.className = `group ${group.index === 'Review' ? 'review' : ''} ${group.testedWords > 0 ? 'tested' : 'not-tested'}`;
-        groupDiv.innerHTML = `<h2>Group ${group.index}</h2>
-                              <p>测试进程: ${group.testedWords}/${group.totalWords}
-                                <div class="progress-bar">
-                                  <div class="progress-bar-inner progress-bar-blue" style="width: ${(group.testedWords / group.totalWords) * 100}%;">${Math.round((group.testedWords / group.totalWords) * 100)}%</div>
-                                </div>
-                              </p>
-                              <p>错误情况: ${group.incorrectWords}/${group.testedWords}
-                                <div class="progress-bar">
-                                  <div class="progress-bar-inner ${group.testedWords > 0 && (group.incorrectWords / group.testedWords) > 0.25 ? 'progress-bar-red' : 'progress-bar-blue'}" style="width: ${group.testedWords > 0 ? (group.incorrectWords / group.testedWords) * 100 : 0}%;">${group.testedWords > 0 ? Math.round((group.incorrectWords / group.testedWords) * 100) : 0}%</div>
-                                </div>
-                              </p>
-                              <p>测试时间: ${group.lastTested}</p>
-                              <button onclick="startTest(${group.index})">Start Test</button>
-                              <button onclick="viewWords(${group.index})">View Words</button>`;
+        groupDiv.className = `group ${group.testedWords > 0 ? 'tested' : 'not-tested'}`;
+        groupDiv.innerHTML = `
+          <h2>Group ${group.index}</h2>
+          <p>测试进程: ${group.testedWords}/${group.totalWords}</p>
+          <div class="progress-bar">
+            <div class="progress blue" style="width: ${testedProgress}%;"></div>
+          </div>
+          <p>错误情况: ${group.incorrectWords}/${group.testedWords}</p>
+          <div class="progress-bar">
+            <div class="progress ${incorrectBarColor}" style="width: ${incorrectProgress}%;"></div>
+          </div>
+          <p>测试时间: ${group.lastTested}</p>
+          <button onclick="startTest(${group.index})">Start Test</button>
+          <button onclick="viewWords(${group.index})">View Words</button>
+        `;
+        if (group.testedWords === group.totalWords) {
+          groupDiv.innerHTML += `<span style="color: green; font-weight: bold;">已经完成第一次测试！</span>`;
+        }
         container.appendChild(groupDiv);
       });
     }
 
-    function startTest(groupNumber) {
-      window.location.href = `spelling.html?group=${groupNumber}`;
+    function displayGroupReview(reviewGroupData) {
+      const container = document.getElementById('groups');
+      const testedProgress = (reviewGroupData.testedWords / reviewGroupData.totalWords) * 100;
+      const incorrectProgress = reviewGroupData.testedWords > 0 ? (reviewGroupData.incorrectWords / reviewGroupData.testedWords) * 100 : 0;
+      const incorrectBarColor = incorrectProgress > 25 ? 'red' : 'blue';
+
+      const groupDiv = document.createElement('div');
+      groupDiv.className = `group ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
+      groupDiv.innerHTML = `
+        <h2>Group Review</h2>
+        <p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
+        <div class="progress-bar">
+          <div class="progress blue" style="width: ${testedProgress}%;"></div>
+        </div>
+        <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
+        <div class="progress-bar">
+          <div class="progress ${incorrectBarColor}" style="width: ${incorrectProgress}%;"></div>
+        </div>
+        <p>测试时间: ${reviewGroupData.lastTested}</p>
+        <button onclick="startTest('Review')">Start Test</button>
+        <button onclick="viewWords('Review')">View Words</button>
+      `;
+      container.prepend(groupDiv);
     }
 
-    function viewWords(groupNumber) {
-      const modal = document.getElementById('wordModal');
-      const modalContent = document.getElementById('wordModalContent');
-      const group = groups.find(g => g.index === groupNumber);
-      if (group) {
-        let tableContent = '<table><tr><th>序列号</th><th>单词</th><th>Dictionary</th></tr>';
-        group.wordData.forEach((word, index) => {
-          tableContent += `<tr><td>${index + 1}</td><td>${word.word}</td><td><a href="https://www.merriam-webster.com/dictionary/${word.word}" target="_blank">Dictionary</a></td></tr>`;
+    window.startTest = function(groupNumber) {
+      window.location.href = `spelling.html?group=${groupNumber}`;
+    };
+
+    window.viewWords = function(groupNumber) {
+      const wordListModal = document.getElementById('wordListModal');
+      const wordListTable = document.getElementById('wordListTable');
+      wordListTable.innerHTML = '<tr><th>序列号</th><th>单词</th><th>Dictionary</th><th>测试总数</th></tr>';
+
+      const wordListRef = ref(database, 'wordlist');
+      const testResultsRef = ref(database, 'testResults');
+      get(wordListRef).then(snapshot => {
+        const words = snapshot.val() || [];
+        let groupWords;
+        if (groupNumber === 'Review') {
+          const wordReviewRef = ref(database, 'wordreview');
+          get(wordReviewRef).then(reviewSnapshot => {
+            groupWords = reviewSnapshot.val() || [];
+            populateWordListTable(groupWords, testResultsRef, wordListTable);
+          });
+        } else {
+          groupWords = words.slice((groupNumber - 1) * 10, groupNumber * 10);
+          populateWordListTable(groupWords, testResultsRef, wordListTable);
+        }
+      });
+      wordListModal.style.display = 'block';
+    };
+
+    function populateWordListTable(groupWords, testResultsRef, wordListTable) {
+      Promise.all(groupWords.map((word, index) => {
+        return get(child(testResultsRef, word)).then(resultSnapshot => {
+          const resultData = resultSnapshot.val() || { totalTests: 0, incorrectCount: 0 };
+          return { word, index: index + 1, ...resultData };
         });
-        tableContent += '</table>';
-        modalContent.innerHTML = tableContent;
-        modal.style.display = 'block';
-      }
+      })).then(wordData => {
+        wordData.forEach(data => {
+          const row = wordListTable.insertRow();
+          const cell1 = row.insertCell(0);
+          const cell2 = row.insertCell(1);
+          const cell3 = row.insertCell(2);
+          const cell4 = row.insertCell(3);
+          cell1.innerHTML = data.index;
+          cell2.innerHTML = data.incorrectCount > 0 ? `<span class="incorrect">${data.word}</span>` : data.word;
+          cell3.innerHTML = `<a href="https://www.merriam-webster.com/dictionary/${data.word}" target="_blank">Dictionary</a>`;
+          cell4.innerHTML = data.totalTests;
+        });
+
+        const closeRow = wordListTable.insertRow();
+        const closeCell = closeRow.insertCell(0);
+        closeCell.colSpan = 4;
+        closeCell.innerHTML = '<button onclick="closeModal()">Close</button>';
+        closeCell.style.textAlign = 'center';
+      });
     }
+
+    window.closeModal = function() {
+      document.getElementById('wordListModal').style.display = 'none';
+    };
 
     window.onclick = function(event) {
-      const modal = document.getElementById('wordModal');
+      const modal = document.getElementById('wordListModal');
       if (event.target == modal) {
         modal.style.display = 'none';
       }
-    }
+    };
   </script>
 </head>
 <body>
   <h1>Beebee Vocabulary List</h1>
   <div id="groups" class="groups-container"></div>
 
-  <div id="wordModal" class="modal">
-    <div id="wordModalContent" class="modal-content"></div>
+  <div id="wordListModal" class="modal">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div class="modal-content">
+      <table id="wordListTable" class="word-list-table"></table>
+    </div>
   </div>
 </body>
 </html>
