@@ -23,7 +23,7 @@
       background-color: rgba(255, 255, 255, 0.8);
     }
     .group.review {
-      flex: 1 1 42%; /* Twice the width of other groups */
+      border-color: lightgreen;
     }
     .tested {
       border-color: lightblue;
@@ -44,55 +44,53 @@
       padding: 10px;
       margin-top: 20px;
     }
-    .progress-bar {
+    table {
       width: 100%;
-      background-color: #f3f3f3;
-      border: 1px solid #ccc;
-      margin-top: 5px;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
-    .progress {
-      height: 20px;
+    th, td {
+      border: 1px solid #000;
+      padding: 8px;
       text-align: center;
+    }
+    .progress-bar {
+      height: 20px;
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-bar-inner {
+      height: 100%;
       line-height: 20px;
       color: white;
+      text-align: center;
     }
-    .progress.blue {
+    .progress-bar-blue {
       background-color: blue;
     }
-    .progress.red {
+    .progress-bar-red {
       background-color: red;
     }
     .modal {
-      display: none; 
-      position: fixed; 
-      z-index: 1; 
-      padding-top: 60px; 
+      display: none;
+      position: fixed;
+      z-index: 1;
       left: 0;
       top: 0;
-      width: 100%; 
-      height: 100%; 
-      overflow: auto; 
-      background-color: rgb(0,0,0); 
-      background-color: rgba(0,0,0,0.4); 
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
     }
     .modal-content {
       background-color: #fefefe;
-      margin: 5% auto;
+      margin: 15% auto;
       padding: 20px;
       border: 1px solid #888;
-      width: 50%; 
-    }
-    .close {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-    }
-    .close:hover,
-    .close:focus {
-      color: black;
-      text-decoration: none;
-      cursor: pointer;
+      width: 50%;
     }
   </style>
   <script type="module">
@@ -120,8 +118,8 @@
       get(wordListRef).then(snapshot => {
         const words = snapshot.val() || [];
         const groups = [];
-        for (let i = 0; i < words.length; i += 20) {  // 修改这一行
-          groups.push(words.slice(i, i + 20));  // 修改这一行
+        for (let i = 0; i < words.length; i += 20) {
+          groups.push(words.slice(i, i + 20));
         }
         Promise.all(groups.map((group, index) => {
           return Promise.all(group.map(word => {
@@ -141,8 +139,8 @@
             const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
             return {
               index: index + 1,
-              start: index * 20 + 1,  // 修改这一行
-              end: index * 20 + group.length,  // 修改这一行
+              start: index * 20 + 1,
+              end: index * 20 + group.length,
               testedWords,
               totalWords: group.length,
               incorrectWords,
@@ -185,7 +183,7 @@
                 lastTested: lastTestedFormatted,
                 wordData
               };
-              displayGroupReview(reviewGroupData);
+              displayGroups([reviewGroupData]);
             });
           }
         });
@@ -196,92 +194,61 @@
 
     function displayGroups(groups) {
       const container = document.getElementById('groups');
+      container.innerHTML = '';
       groups.forEach(group => {
         const groupDiv = document.createElement('div');
-        groupDiv.className = `group ${group.testedWords > 0 ? 'tested' : 'not-tested'}`;
-        const testProgress = (group.testedWords / group.totalWords) * 100;
-        const incorrectProgress = (group.incorrectWords / group.testedWords) * 100;
+        groupDiv.className = `group ${group.index === 'Review' ? 'review' : ''} ${group.testedWords > 0 ? 'tested' : 'not-tested'}`;
         groupDiv.innerHTML = `<h2>Group ${group.index}</h2>
-                              <p>测试进程: ${group.testedWords}/${group.totalWords}</p>
-                              <div class="progress-bar"><div class="progress blue" style="width:${testProgress}%">${testProgress}%</div></div>
-                              <p>错误情况: ${group.incorrectWords}/${group.testedWords}</p>
-                              <div class="progress-bar"><div class="progress ${incorrectProgress > 25 ? 'red' : 'blue'}" style="width:${incorrectProgress}%">${incorrectProgress}%</div></div>
+                              <p>测试进程: ${group.testedWords}/${group.totalWords}
+                                <div class="progress-bar">
+                                  <div class="progress-bar-inner progress-bar-blue" style="width: ${(group.testedWords / group.totalWords) * 100}%;">${Math.round((group.testedWords / group.totalWords) * 100)}%</div>
+                                </div>
+                              </p>
+                              <p>错误情况: ${group.incorrectWords}/${group.testedWords}
+                                <div class="progress-bar">
+                                  <div class="progress-bar-inner ${group.testedWords > 0 && (group.incorrectWords / group.testedWords) > 0.25 ? 'progress-bar-red' : 'progress-bar-blue'}" style="width: ${group.testedWords > 0 ? (group.incorrectWords / group.testedWords) * 100 : 0}%;">${group.testedWords > 0 ? Math.round((group.incorrectWords / group.testedWords) * 100) : 0}%</div>
+                                </div>
+                              </p>
                               <p>测试时间: ${group.lastTested}</p>
                               <button onclick="startTest(${group.index})">Start Test</button>
-                              <button onclick="showWords(${group.index})">查看单词</button>`;
-        if (group.testedWords === group.totalWords) {
-          groupDiv.innerHTML += `<span style="color: green; font-weight: bold;">已经完成第一次测试！</span>`;
-        }
+                              <button onclick="viewWords(${group.index})">View Words</button>`;
         container.appendChild(groupDiv);
       });
     }
 
-    function displayGroupReview(reviewGroupData) {
-      const container = document.getElementById('groups');
-      const groupDiv = document.createElement('div');
-      groupDiv.className = `group review ${reviewGroupData.testedWords > 0 ? 'tested' : 'not-tested'}`;
-      const testProgress = (reviewGroupData.testedWords / reviewGroupData.totalWords) * 100;
-      const incorrectProgress = (reviewGroupData.incorrectWords / reviewGroupData.testedWords) * 100;
-      groupDiv.innerHTML = `<h2>Group Review</h2>
-                            <p>测试进程: ${reviewGroupData.testedWords}/${reviewGroupData.totalWords}</p>
-                            <div class="progress-bar"><div class="progress blue" style="width:${testProgress}%">${testProgress}%</div></div>
-                            <p>错误情况: ${reviewGroupData.incorrectWords}/${reviewGroupData.testedWords}</p>
-                            <div class="progress-bar"><div class="progress ${incorrectProgress > 25 ? 'red' : 'blue'}" style="width:${incorrectProgress}%">${incorrectProgress}%</div></div>
-                            <p>测试时间: ${reviewGroupData.lastTested}</p>
-                            <button onclick="startTest('Review')">Start Test</button>
-                            <button onclick="showWords('Review')">查看单词</button>`;
-      container.prepend(groupDiv);
+    function startTest(groupNumber) {
+      window.location.href = `spelling.html?group=${groupNumber}`;
     }
 
-    window.startTest = function(groupNumber) {
-      window.location.href = `spelling.html?group=${groupNumber}`;
-    };
-
-    window.showWords = function(groupNumber) {
-      const modal = document.createElement('div');
-      modal.className = 'modal';
-      modal.innerHTML = `<div class="modal-content">
-                          <span class="close" onclick="closeModal(this)">&times;</span>
-                          <h2>Group ${groupNumber} 单词列表</h2>
-                          <table id="wordTable"></table>
-                         </div>`;
-      document.body.appendChild(modal);
-
-      const wordListRef = ref(database, 'wordlist');
-      get(wordListRef).then(snapshot => {
-        const words = snapshot.val() || [];
-        let groupWords;
-        if (groupNumber === 'Review') {
-          groupWords = words; // Add logic to get review words
-        } else {
-          const start = (groupNumber - 1) * 20;
-          const end = groupNumber * 20;
-          groupWords = words.slice(start, end);
-        }
-
-        const wordTable = document.getElementById('wordTable');
-        groupWords.forEach((word, index) => {
-          const row = wordTable.insertRow();
-          const cell1 = row.insertCell(0);
-          const cell2 = row.insertCell(1);
-          const cell3 = row.insertCell(2);
-          cell1.innerHTML = start + index + 1;
-          cell2.innerHTML = word;
-          cell3.innerHTML = `<a href="https://www.merriam-webster.com/dictionary/${word}" target="_blank">Dictionary</a>`;
+    function viewWords(groupNumber) {
+      const modal = document.getElementById('wordModal');
+      const modalContent = document.getElementById('wordModalContent');
+      const group = groups.find(g => g.index === groupNumber);
+      if (group) {
+        let tableContent = '<table><tr><th>序列号</th><th>单词</th><th>Dictionary</th></tr>';
+        group.wordData.forEach((word, index) => {
+          tableContent += `<tr><td>${index + 1}</td><td>${word.word}</td><td><a href="https://www.merriam-webster.com/dictionary/${word.word}" target="_blank">Dictionary</a></td></tr>`;
         });
-
+        tableContent += '</table>';
+        modalContent.innerHTML = tableContent;
         modal.style.display = 'block';
-      });
-    };
+      }
+    }
 
-    window.closeModal = function(element) {
-      element.closest('.modal').style.display = 'none';
-      document.body.removeChild(element.closest('.modal'));
-    };
+    window.onclick = function(event) {
+      const modal = document.getElementById('wordModal');
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    }
   </script>
 </head>
 <body>
   <h1>Beebee Vocabulary List</h1>
   <div id="groups" class="groups-container"></div>
+
+  <div id="wordModal" class="modal">
+    <div id="wordModalContent" class="modal-content"></div>
+  </div>
 </body>
 </html>
