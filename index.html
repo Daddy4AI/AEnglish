@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Beebee Vocabulary List</title>
+  <title>beebee Vocabulary List</title>
   <style>
     body {
       background: url('pics/backgd05.jpg') no-repeat center center fixed;
@@ -106,7 +106,6 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
     import { getDatabase, ref, get, child } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
-    
     const firebaseConfig = {
       apiKey: "AIzaSyCmlxG5PBVji_T3dAGJT4L675NNWCyRhqU",
       authDomain: "beebee-c1ccc.firebaseapp.com",
@@ -119,6 +118,7 @@
 
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
+    const testRound = 1;
 
     document.addEventListener('DOMContentLoaded', function() {
       const wordListRef = ref(database, 'wordlist');
@@ -128,8 +128,8 @@
       get(wordListRef).then(snapshot => {
         const words = snapshot.val() || [];
         const groups = [];
-        for (let i = 0; i < words.length; i += 10) {
-          groups.push(words.slice(i, i + 10));
+        for (let i = 0; i < words.length; i += 15) {
+          groups.push(words.slice(i, i + 15));
         }
         Promise.all(groups.map((group, index) => {
           return Promise.all(group.map(word => {
@@ -149,8 +149,8 @@
             const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
             return {
               index: index + 1,
-              start: index * 10 + 1,
-              end: index * 10 + group.length,
+              start: index * 15 + 1,
+              end: index * 15 + group.length,
               testedWords,
               totalWords: group.length,
               incorrectWords,
@@ -169,7 +169,7 @@
           if (reviewWords.length > 0) {
             Promise.all(reviewWords.map(word => {
               return get(child(testResultsRef, word)).then(resultSnapshot => {
-                const resultData = resultSnapshot.val() || { totalTests: 0, incorrectCount: 0 };
+                const resultData = resultSnapshot.val() || { totalTests: 0, incorrectCount: 0, correctCount: 0 };
                 return { word, ...resultData };
               });
             })).then(wordData => {
@@ -182,13 +182,17 @@
                 return latest;
               }, null);
               const lastTestedFormatted = lastTested ? new Date(lastTested).toLocaleString('en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : 'N/A';
+              const adjustedTestedWords = Math.max(0, testedWords - testRound);
+              const adjustedIncorrectWords = Math.max(0, incorrectWords - testRound);
+              const adjustedTotalTests = Math.max(0, testedWords * 2 - 2 * testRound);
+
               const reviewGroupData = {
                 index: 'Review',
                 start: 1,
                 end: reviewWords.length,
-                testedWords,
+                testedWords: adjustedTestedWords,
                 totalWords: reviewWords.length,
-                incorrectWords,
+                incorrectWords: adjustedIncorrectWords,
                 lastTested: lastTestedFormatted
               };
               displayGroupReview(reviewGroupData);
@@ -276,7 +280,7 @@
             populateWordListTable(groupWords, testResultsRef, wordListTable);
           });
         } else {
-          groupWords = words.slice((groupNumber - 1) * 10, groupNumber * 10);
+          groupWords = words.slice((groupNumber - 1) * 15, groupNumber * 15);
           populateWordListTable(groupWords, testResultsRef, wordListTable);
         }
       });
@@ -323,7 +327,7 @@
   </script>
 </head>
 <body>
-  <h1>Beebee Vocabulary List</h1>
+  <h1>beebee Vocabulary List</h1>
   <div id="groups" class="groups-container"></div>
 
   <div id="wordListModal" class="modal">
