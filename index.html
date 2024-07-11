@@ -117,7 +117,7 @@
     </style>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getDatabase, ref, get, child } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+        import { getDatabase, ref, get, child, update } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
         import firebaseConfig from './firebaseConfig.js';
 
         const app = initializeApp(firebaseConfig);
@@ -170,8 +170,9 @@
             }));
 
             const wordReviewDataPromises = wordReview.map((word, index) => get(child(testResultsRef, word)).then(snapshot => {
-                const resultData = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0, lastTested: null };
-                if (resultData.lastTested && new Date(resultData.lastTested).toDateString() === new Date().toDateString()) {
+                const resultData = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0, lastTested: null, dateaddtoReview: null };
+                if (resultData.lastTested && new Date(resultData.lastTested).toDateString() === new Date().toDateString() &&
+                    (!resultData.dateaddtoReview || new Date(resultData.dateaddtoReview).toDateString() !== new Date().toDateString())) {
                     testedWords.push({ word, index, ...resultData });
                 }
                 return { word, index, ...resultData };
@@ -215,7 +216,7 @@
 
             // Calculate reviewWordsComp excluding words newly added to wordReview today
             reviewWordsComp = Array.from(testedTodaySet).filter(word =>
-                wordReview.some(w => w.word === word && !newlyAddedToReview.has(word))
+                wordReview.some(w => w.word === word && (!w.dateaddtoReview || new Date(w.dateaddtoReview).toDateString() !== new Date().toDateString()))
             ).length;
 
             wordsComp = newwordsComp + reviewWordsComp;

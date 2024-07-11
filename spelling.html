@@ -380,6 +380,11 @@
             }).catch(error => {
                 console.error("Error adding word to review list: ", error);
             });
+
+            const wordRef = ref(database, `testResults/${word}`);
+            update(wordRef, { dateaddtoReview: new Date().toISOString() }).catch(error => {
+                console.error("Error updating dateaddtoReview: ", error);
+            });
         };
 
         window.addEventListener('keydown', function(event) {
