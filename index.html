@@ -211,13 +211,22 @@
                 }
             });
 
-            // Calculate newwordsComp
-            newwordsComp = Array.from(testedTodaySet).filter(word => wordList.some(w => w.word === word)).length;
-
             // Calculate reviewWordsComp excluding words newly added to wordReview today
-            reviewWordsComp = Array.from(testedTodaySet).filter(word =>
+            const reviewWordsCompSet = new Set(Array.from(testedTodaySet).filter(word =>
                 wordReview.some(w => w.word === word && (!w.dateaddtoReview || new Date(w.dateaddtoReview).toDateString() !== new Date().toDateString()))
-            ).length;
+            ));
+
+            // Calculate newwordsComp excluding words that are in reviewWordsCompSet
+            const newWordsSet = new Set(Array.from(testedTodaySet).filter(word =>
+                wordList.some(w => w.word === word) && !reviewWordsCompSet.has(word)
+            ));
+
+            // Calculate the counts
+            newwordsComp = newWordsSet.size;
+            reviewWordsComp = reviewWordsCompSet.size;
+
+            // Ensure there are no duplicate words in newWordsSet and reviewWordsCompSet
+            newWordsSet.forEach(word => reviewWordsCompSet.delete(word));
 
             wordsComp = newwordsComp + reviewWordsComp;
             updateWordCounts();
@@ -454,7 +463,7 @@
                 <p>
                     Total Words Today:
                     <select onchange="updateTotalWordsToday(this.value)">
-                        <option value="5">5</option>
+                        <option value="15">15</option>
                         <option value="17">17</option>
                         <option value="20">20</option>
                         <option value="25">25</option>
@@ -465,7 +474,7 @@
                         <option value="20" selected>20%</option>
                         <option value="30">30%</option>
                         <option value="40">40%</option>
-                        <option value="50">50%</option>
+                        <option value="50%">50%</option>
                     </select>
                 </p>
             </div>
