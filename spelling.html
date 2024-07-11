@@ -254,11 +254,11 @@
         window.displayWord = async function() {
             if (words.length === 0) return;
             const word = words[currentWordIndex].word;
-            const wordIndex = currentWordIndex + 1 + todayTestedCount;
+            const wordIndex = currentWordIndex + todayTestedCount;
             const groupRelativeIndex = wordIndex;
 
             playWord(word);
-            document.getElementById('wordNumber').innerText = `单词序列号: ${groupRelativeIndex} out of ${words.length + todayTestedCount} words`;
+            document.getElementById('wordNumber').innerText = `单词序列号: ${groupRelativeIndex} out of ${totalTask} words`;
             document.getElementById('spellingInput').value = '';
             document.getElementById('spellingInput').focus();
             document.getElementById('result').innerText = '';
