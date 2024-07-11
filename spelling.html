@@ -369,22 +369,22 @@
             set(wordReviewRef, incorrectWords);
         };
 
-        window.addToWordReview = function(word) {
+        window.addToWordReview = async function(word) {
             const wordReviewRef = ref(database, 'wordreview');
-            get(wordReviewRef).then(snapshot => {
+            const wordRef = ref(database, `testResults/${word}`);
+
+            try {
+                const snapshot = await get(wordReviewRef);
                 const currentWords = snapshot.val() || [];
+
                 if (!currentWords.includes(word)) {
                     currentWords.push(word);
-                    set(wordReviewRef, currentWords);
+                    await set(wordReviewRef, currentWords);
+                    await update(wordRef, { dateaddtoReview: new Date().toISOString() });
                 }
-            }).catch(error => {
+            } catch (error) {
                 console.error("Error adding word to review list: ", error);
-            });
-
-            const wordRef = ref(database, `testResults/${word}`);
-            update(wordRef, { dateaddtoReview: new Date().toISOString() }).catch(error => {
-                console.error("Error updating dateaddtoReview: ", error);
-            });
+            }
         };
 
         window.addEventListener('keydown', function(event) {
@@ -453,6 +453,6 @@
         <p>恭喜你完成这组单词的测试！</p>
         <button onclick="window.location.href='index.html'">返回首页</button>
     </div>
-    <div id="version">Voice from Merriam-Webster0.2</div>
+    <div id="version">Voice from Merriam-Webster0.3</div>
 </body>
 </html>
