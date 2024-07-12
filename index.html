@@ -233,6 +233,10 @@
             newWordsSet.forEach(word => reviewWordsCompSet.delete(word));
 
             wordsComp = newwordsComp + reviewWordsComp;
+
+            // Save completedToday to localStorage
+            localStorage.setItem('completedToday', wordsComp);
+
             testedWords = Array.from(newWordsSet).map(word => {
                 const wordObj = wordList.find(w => w.word === word);
                 return {
@@ -398,6 +402,8 @@
             const wordsToTest = [...newWords, ...reviewWords].map(word => word.word);
 
             localStorage.setItem('wordsToTest', JSON.stringify(wordsToTest));
+            localStorage.setItem('totalTask', totalWordsToday);
+            localStorage.setItem('completedToday', wordsComp);
             window.location.href = 'spelling.html';
         };
 
@@ -418,15 +424,18 @@
             testedWordsTable.innerHTML = '<tr><th>Index</th><th>Word</th><th>Tested Time</th><th>Number of Tests</th></tr>';
 
             testedWords.forEach(word => {
-                const row = testedWordsTable.insertRow();
-                const cell1 = row.insertCell(0);
-                const cell2 = row.insertCell(1);
-                const cell3 = row.insertCell(2);
-                const cell4 = row.insertCell(3);
-                cell1.textContent = word.index + 1;
-                cell2.textContent = word.word;
-                cell3.textContent = word.lastTested;
-                cell4.textContent = `${word.correctCount}/${word.incorrectCount}/${word.totalTests}`;
+                const isInWordList = wordList.some(w => w.word === word.word);
+                if (isInWordList || !newlyAddedToReview.has(word.word)) {
+                    const row = testedWordsTable.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+                    const cell3 = row.insertCell(2);
+                    const cell4 = row.insertCell(3);
+                    cell1.textContent = isInWordList ? wordList.find(w => w.word === word.word).index + 1 : wordReview.find(w => w.word === word.word).index + 1;
+                    cell2.textContent = word.word;
+                    cell3.textContent = word.lastTested;
+                    cell4.textContent = `${word.correctCount}/${word.incorrectCount}/${word.totalTests}`;
+                }
             });
 
             testedWordsTable.style.display = 'table';
@@ -486,8 +495,8 @@
                 <p>
                     Total Words Today:
                     <select onchange="updateTotalWordsToday(this.value)">
-                        <option value="4">4</option>
-                        <option value="7">7</option>
+                        <option value="15">15</option>
+                        <option value="17">17</option>
                         <option value="20">20</option>
                         <option value="25">25</option>
                     </select>

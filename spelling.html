@@ -122,337 +122,213 @@
         }
     </style>
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getDatabase, ref, get, update, set, child } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
-        import firebaseConfig from './firebaseConfig.js';
+           import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+           import { getDatabase, ref, get, child, update } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+           import firebaseConfig from './firebaseConfig.js';
 
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        let currentWordIndex = 0;
-        let words = [];
-        let todayTestedCount = 0;
-        const testedWordsToday = new Set();
-        const incorrectWordsSet = new Set();
+           const app = initializeApp(firebaseConfig);
+           const database = getDatabase(app);
+           let words = [];
+           let currentWordIndex = 0;
+           let testedWordsToday = new Set();
+           let todayTestedCount = 0;
+           let totalTask = 0;
+           let completedToday = 0;
 
-        const apiKey = '4c841aa5-4903-4de1-80d6-b81c397935a9';
+           document.addEventListener('DOMContentLoaded', function() {
+               const wordsToShow = JSON.parse(localStorage.getItem('wordsToTest'));
+               totalTask = parseInt(localStorage.getItem('totalTask'), 10) || 0;
+               completedToday = parseInt(localStorage.getItem('completedToday'), 10) || 0;
 
-        // Initial rates
-        let synthesisRate = 0.5;
-        let mp3Rate = 0.7;
+               if (wordsToShow) {
+                   loadWords(wordsToShow, completedToday, totalTask);
+               } else {
+                   fetchWords();
+               }
+           });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            if (wordsToShow) {
-                loadWords(wordsToShow);
-            } else {
-                fetchWords();
-            }
+           function loadWords(sortedWords, completedToday, totalTask) {
+               words = sortedWords.map(word => ({ word, totalTests: 0, correctCount: 0, incorrectCount: 0, lastTested: null }));
+               todayTestedCount = completedToday;
+               displayWord();
+           }
 
-            // Set up event listeners for rate adjustment
-            document.getElementById('synthesisRateSlider').addEventListener('input', function(event) {
-                synthesisRate = parseFloat(event.target.value);
-            });
+           async function fetchWords() {
+               const wordListRef = ref(database, 'wordlist');
+               const testResultsRef = ref(database, 'testResults');
 
-            document.getElementById('mp3RateSlider').addEventListener('input', function(event) {
-                mp3Rate = parseFloat(event.target.value);
-            });
-        });
+               try {
+                   const snapshot = await get(wordListRef);
+                   const allWords = snapshot.val() || [];
+                   const wordDataPromises = allWords.map((word, index) => get(child(testResultsRef, word)).then(snapshot => {
+                       const resultData = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0, lastTested: null };
+                       return { word, index, ...resultData };
+                   }));
 
-        async function fetchWords() {
-            const wordListRef = ref(database, 'wordlist');
-            const testResultsRef = ref(database, 'testResults');
-            const wordReviewRef = ref(database, 'wordreview');
-            const todayDate = new Date().toISOString().split('T')[0];
+                   words = await Promise.all(wordDataPromises);
+                   displayWord();
+               } catch (error) {
+                   console.error("Error getting data: ", error);
+               }
+           }
 
-            get(wordListRef).then(snapshot => {
-                const allWords = snapshot.val() || [];
-                let groupWords;
+           window.displayWord = async function() {
+               if (words.length === 0) return;
+               const word = words[currentWordIndex].word;
 
-                get(wordReviewRef).then(reviewSnapshot => {
-                    groupWords = reviewSnapshot.val() || [];
-                    loadWords(groupWords, testResultsRef, todayDate, allWords);
-                });
-            }).catch(error => {
-                console.error("Error getting data: ", error);
-            });
-        }
+               playWord(word);
+               document.getElementById('wordNumber').innerText = `单词序列号: ${testedWordsToday.size + 1} out of ${totalTask} words`;
+               document.getElementById('spellingInput').value = '';
+               document.getElementById('spellingInput').focus();
+               document.getElementById('result').innerText = '';
+               document.getElementById('exampleSentence').innerText = '';
+               document.getElementById('playWordButton').innerText = 'Play Word';
 
-        function loadWords(sortedWords) {
-            words = sortedWords;
-            const testedWords = words.filter(w => w.totalTests > 0).length;
-            const notTestedWords = words.length - testedWords;
+               const definition = await getDefinition(word);
+               document.getElementById('wordDefinition').innerText = definition;
+           };
 
-            todayTestedCount = testedWordsToday.size;
+           window.checkSpelling = async function() {
+               const input = document.getElementById('spellingInput').value.trim().toLowerCase();
+               const word = words[currentWordIndex].word.toLowerCase();
+               const resultElement = document.getElementById('result');
+               const now = new Date().toISOString();
 
-            updateGroupStats(testedWords, notTestedWords);
-            displayWord();
-        }
+               if (input === word) {
+                   resultElement.innerText = '正确';
+                   resultElement.className = 'correct';
+                   saveTestResult(words[currentWordIndex].word, true, now).then(() => {
+                       currentWordIndex++;
+                       testedWordsToday.add(words[currentWordIndex].word);
 
-        async function getDefinition(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
-            if (data.length > 0 && data[0].shortdef) {
-                return data[0].shortdef.join('; ');
-            }
-            return "No definition available.";
-        }
+                       if (testedWordsToday.size + completedToday >= totalTask) {
+                           showCompletionMessage();
+                       } else {
+                           if (currentWordIndex < words.length) {
+                               setTimeout(() => {
+                                   displayWord();
+                               }, 2000);
+                           } else {
+                               showCompletionMessage();
+                           }
+                       }
+                   });
+               } else {
+                   resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex].word}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex].word}" target="_blank">查询本单词</a>`;
+                   resultElement.className = 'incorrect';
+                   saveTestResult(words[currentWordIndex].word, false, now).then(() => {
+                       addToWordReview(words[currentWordIndex].word);
+                   });
+               }
+           };
 
-        async function getExampleSentence(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
-            if (data.length > 0 && data[0].def && data[0].def[0].sseq) {
-                const senses = data[0].def[0].sseq;
-                for (const sense of senses) {
-                    const dt = sense[0][1].dt;
-                    if (dt) {
-                        for (const item of dt) {
-                            if (item[0] === "vis") {
-                                let sentence = item[1][0].t;
-                                sentence = sentence.replace(/{wi}/g, '').replace(/{\/wi}/g, '');
-                                return sentence;
-                            }
-                        }
-                    }
-                }
-            }
-            return "No example sentence available.";
-        }
+           async function saveTestResult(word, correct, timestamp) {
+               const wordRef = child(ref(database, 'testResults'), word);
+               const snapshot = await get(wordRef);
+               const data = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0 };
 
-        async function getAudioUrl(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
+               if (correct) {
+                   data.correctCount++;
+               } else {
+                   data.incorrectCount++;
+               }
+               data.totalTests++;
+               data.lastTested = timestamp;
 
-            if (data.length > 0 && data[0].hwi && data[0].hwi.prs && data[0].hwi.prs.length > 0) {
-                const sound = data[0].hwi.prs[0].sound;
-                if (sound && sound.audio) {
-                    const subdirectory = sound.audio.startsWith('bix') ? 'bix' :
-                                         sound.audio.startsWith('gg') ? 'gg' :
-                                         sound.audio.startsWith('_') || sound.audio.startsWith('1') ? 'number' : sound.audio.charAt(0);
-                    return `https://media.merriam-webster.com/audio/prons/en/us/mp3/${subdirectory}/${sound.audio}.mp3`;
-                }
-            }
-            return null;
-        }
+               await update(wordRef, data);
+           }
 
-        async function playWord(word) {
-            const utterance = new SpeechSynthesisUtterance(word);
-            utterance.lang = 'en-US';
-            utterance.rate = synthesisRate;
-            window.speechSynthesis.speak(utterance);
-        }
+           async function addToWordReview(word) {
+               const wordReviewRef = ref(database, 'wordreview');
+               const wordRef = ref(database, `testResults/${word}`);
+               const snapshot = await get(wordReviewRef);
+               const currentWords = snapshot.val() || [];
 
-        window.playMerriamWebsterVoice = async function() {
-            const word = words[currentWordIndex].word;
-            const audioUrl = await getAudioUrl(word);
-            if (audioUrl) {
-                const audio = new Audio(audioUrl);
-                audio.playbackRate = mp3Rate;
-                audio.play();
-            }
-        }
+               if (!currentWords.includes(word)) {
+                   currentWords.push(word);
+                   await update(wordReviewRef, currentWords);
+                   await update(wordRef, { dateaddtoReview: new Date().toISOString() });
+               }
+           }
 
-        window.displayWord = async function() {
-            if (words.length === 0) return;
-            const word = words[currentWordIndex].word;
-            const wordIndex = currentWordIndex + todayTestedCount;
-            const groupRelativeIndex = wordIndex;
+           async function getDefinition(word) {
+               const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+               const data = await response.json();
+               if (data.length > 0 && data[0].shortdef) {
+                   return data[0].shortdef.join('; ');
+               }
+               return "No definition available.";
+           }
 
-            playWord(word);
-            document.getElementById('wordNumber').innerText = `单词序列号: ${groupRelativeIndex} out of ${totalTask} words`;
-            document.getElementById('spellingInput').value = '';
-            document.getElementById('spellingInput').focus();
-            document.getElementById('result').innerText = '';
-            document.getElementById('exampleSentence').innerText = '';
-            document.getElementById('playWordButton').innerText = 'Play Word';
+           async function getExampleSentence(word) {
+               const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+               const data = await response.json();
+               if (data.length > 0 && data[0].def && data[0].def[0].sseq) {
+                   const senses = data[0].def[0].sseq;
+                   for (const sense of senses) {
+                       const dt = sense[0][1].dt;
+                       if (dt) {
+                           for (const item of dt) {
+                               if (item[0] === "vis") {
+                                   let sentence = item[1][0].t;
+                                   sentence = sentence.replace(/{wi}/g, '').replace(/{\/wi}/g, '');
+                                   return sentence;
+                               }
+                           }
+                       }
+                   }
+               }
+               return "No example sentence available.";
+           }
 
-            const definition = await getDefinition(word);
-            document.getElementById('wordDefinition').innerText = definition;
-        };
+           async function getAudioUrl(word) {
+               const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+               const data = await response.json();
 
-        window.checkSpelling = async function() {
-            const input = document.getElementById('spellingInput').value.trim().toLowerCase();
-            const word = words[currentWordIndex].word.toLowerCase();
-            const resultElement = document.getElementById('result');
-            const playWordButton = document.getElementById('playWordButton');
-            const now = new Date().toISOString();
+               if (data.length > 0 && data[0].hwi && data[0].hwi.prs && data[0].hwi.prs.length > 0) {
+                   const sound = data[0].hwi.prs[0].sound;
+                   if (sound && sound.audio) {
+                       const subdirectory = sound.audio.startsWith('bix') ? 'bix' :
+                                            sound.audio.startsWith('gg') ? 'gg' :
+                                            sound.audio.startsWith('_') || sound.audio.startsWith('1') ? 'number' : sound.audio.charAt(0);
+                       return `https://media.merriam-webster.com/audio/prons/en/us/mp3/${subdirectory}/${sound.audio}.mp3`;
+                   }
+               }
+               return null;
+           }
 
-            if (input === word) {
-                resultElement.innerText = '正确';
-                resultElement.className = 'correct';
-                const exampleSentence = await getExampleSentence(words[currentWordIndex].word);
-                document.getElementById('exampleSentence').innerText = exampleSentence;
-                saveTestResult(words[currentWordIndex].word, true, now).then(() => {
-                    updateGroupStatsAfterSave();
-                    currentWordIndex++;
-                    if (!testedWordsToday.has(words[currentWordIndex].word)) {
-                        todayTestedCount++;
-                        testedWordsToday.add(words[currentWordIndex].word);
-                    }
+           async function playWord(word) {
+               const utterance = new SpeechSynthesisUtterance(word);
+               utterance.lang = 'en-US';
+               window.speechSynthesis.speak(utterance);
+           }
 
-                    if (currentWordIndex < words.length) {
-                        setTimeout(() => {
-                            displayWord();
-                            playWord(words[currentWordIndex].word);
-                        }, 2000);
-                    } else {
-                        saveIncorrectWords();
-                        showCompletionMessage();
-                    }
-                });
-            } else {
-                resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex].word}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex].word}" target="_blank">查询本单词</a>`;
-                resultElement.className = 'incorrect';
-                playWordButton.innerText = 'Test Again';
-                saveTestResult(words[currentWordIndex].word, false, now).then(() => {
-                    addToWordReview(words[currentWordIndex].word);
-                    updateGroupStatsAfterSave();
-                });
-            }
-        };
+           window.playMerriamWebsterVoice = async function() {
+               const word = words[currentWordIndex].word;
+               const audioUrl = await getAudioUrl(word);
+               if (audioUrl) {
+                   const audio = new Audio(audioUrl);
+                   audio.play();
+               }
+           }
 
-        function showCompletionMessage() {
-            const msgBox = document.getElementById('msgBox');
-            msgBox.innerHTML = `<p>恭喜你完成这组单词的测试！</p>
-                                <button onclick="window.location.href='index.html'">返回首页</button>`;
-            msgBox.style.display = 'block';
-        }
-
-        function updateGroupStatsAfterSave() {
-            const testedWords = words.filter(w => w.totalTests > 0).length;
-            const notTestedWords = words.length - testedWords;
-            updateGroupStats(testedWords, notTestedWords);
-        }
-
-        window.retryWord = function() {
-            const word = words[currentWordIndex].word;
-            playWord(word);
-            document.getElementById('spellingInput').value = '';
-            document.getElementById('spellingInput').focus();
-            document.getElementById('result').innerText = '';
-            document.getElementById('exampleSentence').innerText = '';
-            document.getElementById('playWordButton').innerText = 'Play Word';
-        };
-
-        window.updateGroupStats = function(testedWords, notTestedWords) {
-            const totalTestsMap = new Map();
-            words.forEach(word => {
-                if (totalTestsMap.has(word.totalTests)) {
-                    totalTestsMap.set(word.totalTests, totalTestsMap.get(word.totalTests) + 1);
-                } else {
-                    totalTestsMap.set(word.totalTests, 1);
-                }
-            });
-
-            const tableRows = [];
-            totalTestsMap.forEach((count, totalTests) => {
-                tableRows.push(`<tr><td>${totalTests}</td><td>${count}</td></tr>`);
-            });
-
-            document.getElementById('groupStats').innerHTML = `
-                <table id="groupStatsTable">
-                    <thead>
-                        <tr>
-                            <th>测试次数</th>
-                            <th>单词数</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows.join('')}
-                    </tbody>
-                </table>
-            `;
-        };
-
-        window.saveIncorrectWords = function() {
-            const incorrectWords = Array.from(incorrectWordsSet);
-            const wordReviewRef = ref(database, 'wordreview');
-            set(wordReviewRef, incorrectWords);
-        };
-
-        window.addToWordReview = async function(word) {
-            const wordReviewRef = ref(database, 'wordreview');
-            const wordRef = ref(database, `testResults/${word}`);
-
-            try {
-                const snapshot = await get(wordReviewRef);
-                const currentWords = snapshot.val() || [];
-
-                if (!currentWords.includes(word)) {
-                    currentWords.push(word);
-                    await set(wordReviewRef, currentWords);
-                    await update(wordRef, { dateaddtoReview: new Date().toISOString() });
-                }
-            } catch (error) {
-                console.error("Error adding word to review list: ", error);
-            }
-        };
-
-        window.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                const playWordButton = document.getElementById('playWordButton');
-                if (playWordButton.innerText === '下一个') {
-                    displayWord();
-                } else if (playWordButton.innerText === 'Test Again') {
-                    retryWord();
-                } else {
-                    checkSpelling();
-                }
-            }
-        });
-
-        window.saveTestResult = function(word, correct, timestamp) {
-            return new Promise((resolve, reject) => {
-                const wordRef = child(ref(database, 'testResults'), word);
-                get(wordRef).then(snapshot => {
-                    const data = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0 };
-                    const todayDate = new Date().toISOString().split('T')[0];
-                    if (data.lastTested && data.lastTested.startsWith(todayDate)) {
-                        resolve();
-                        return;
-                    }
-                    if (correct) {
-                        data.correctCount++;
-                    } else {
-                        data.incorrectCount++;
-                    }
-                    if (isNaN(data.totalTests)) {
-                        data.totalTests = 0;
-                    }
-                    data.totalTests++;
-                    data.lastTested = timestamp;
-                    update(wordRef, data).then(() => {
-                        if (timestamp.startsWith(new Date().toISOString().split('T')[0])) {
-                            testedWordsToday.add(word);
-                        }
-                        resolve();
-                    }).catch(reject);
-                }).catch(reject);
-            });
-        };
-    </script>
-</head>
-<body>
-    <h1>Spelling Bee</h1>
-    <p id="wordNumber">单词序列号: NaN out of 50 words</p>
-
-    <div id="controls">
-        <label for="synthesisRateSlider">Rate:</label>
-        <input type="range" id="synthesisRateSlider" min="0.3" max="0.7" step="0.1" value="0.5">
-        <button id="playWordButton" onclick="displayWord()">Play Word</button>
-        <button id="playMerriamWebsterVoiceButton" onclick="playMerriamWebsterVoice()">Dictionary Voice</button>
-        <label for="mp3RateSlider">Rate:</label>
-        <input type="range" id="mp3RateSlider" min="0.5" max="0.9" step="0.1" value="0.7">
-    </div>
-
-    <p id="wordDefinition"></p> <!-- Definition will be displayed here -->
-    <input type="text" id="spellingInput" autocomplete="off" autocorrect="off" spellcheck="false">
-    <p id="result"></p>
-    <p id="exampleSentence"></p>
-    <div id="groupStats"></div>
-    <div id="msgBox">
-        <p>恭喜你完成这组单词的测试！</p>
-        <button onclick="window.location.href='index.html'">返回首页</button>
-    </div>
-    <div id="version">Voice from Merriam-Webster0.3</div>
-</body>
-</html>
+           function showCompletionMessage() {
+               const msgBox = document.getElementById('msgBox');
+               msgBox.innerHTML = `<p>恭喜你完成这组单词的测试！</p>
+                                   <button onclick="window.location.href='index.html'">返回首页</button>`;
+               msgBox.style.display = 'block';
+           }
+       </script>
+   </head>
+   <body>
+       <h1>Spelling Test</h1>
+       <div id="wordNumber"></div>
+       <input type="text" id="spellingInput">
+       <button id="playWordButton" onclick="playWord()">Play Word</button>
+       <button onclick="checkSpelling()">Check Spelling</button>
+       <div id="result"></div>
+       <div id="exampleSentence"></div>
+       <div id="wordDefinition"></div>
+       <div id="msgBox" style="display: none;"></div>
+   </body>
+   </html>
