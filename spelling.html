@@ -301,7 +301,6 @@
             } else {
                 resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex].word}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex].word}" target="_blank">查询本单词</a>`;
                 resultElement.className = 'incorrect';
-                playWordButton.innerText = 'Test Again';
                 saveTestResult(words[currentWordIndex].word, false, now).then(() => {
                     addToWordReview(words[currentWordIndex].word);
                 });
