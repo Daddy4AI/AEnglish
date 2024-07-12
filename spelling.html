@@ -120,6 +120,14 @@
         .rate-adjustment input[type="range"] {
             margin: 0 10px;
         }
+        #testStats {
+           font-size: 20px;
+           margin-top: 20px;
+           text-align: center;
+        }
+        #testStats p {
+           margin: 5px 0;
+        }
     </style>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
@@ -321,6 +329,15 @@
             const testedWords = words.filter(w => w.totalTests > 0).length;
             const notTestedWords = words.length - testedWords;
             updateGroupStats(testedWords, notTestedWords);
+            updateTestStats();
+        }
+
+        function updateTestStats() {
+            document.getElementById('totalWordsToday').innerText = words.length + todayTestedCount;
+            document.getElementById('wordsComp').innerText = words.filter(w => w.totalTests > 0).length;
+            document.getElementById('todayTestedCount').innerText = todayTestedCount;
+            document.getElementById('currentWordIndex').innerText = currentWordIndex + 1;
+            document.getElementById('totalWords').innerText = words.length;
         }
 
         window.retryWord = function() {
@@ -449,10 +466,18 @@
     <p id="result"></p>
     <p id="exampleSentence"></p>
     <div id="groupStats"></div>
+    <div id="testStats">
+      <p>总测试单词数: <span id="totalWordsToday"></span></p>
+      <p>开始时已测试单词数: <span id="wordsComp"></span></p>
+      <p>本次测试单词数: <span id="todayTestedCount"></span></p>
+      <p>当前单词序列号: <span id="currentWordIndex"></span></p>
+      <p>单词总数: <span id="totalWords"></span></p>
+    </div>
+
     <div id="msgBox">
         <p>恭喜你完成这组单词的测试！</p>
         <button onclick="window.location.href='index.html'">返回首页</button>
     </div>
-    <div id="version">Voice from Merriam-Webster0.2</div>
+    <div id="version">Voice from Merriam-Webster0.5</div>
 </body>
 </html>
