@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spelling Bee</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            font-size: 30px;
+            background: url('pics/backgd01.jpg') no-repeat center center fixed;
+            background-size: cover;
+            position: relative;
+        }
+        h1 {
+            margin-top: 10px;
+            margin-bottom: 3px;
+        }
+
+        #controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 70%;
+            margin-top: 10px;
+        }
+        #controls label, #controls input, #controls button {
+            margin: 0 10px;
+        }
+
+        #wordNumber {
+            margin: 20px 0;
+        }
+        #spellingInput {
+            font-size: 30px;
+            padding: 10px;
+            text-transform: none;
+            autocomplete: off;
+            autocorrect: off;
+            spellcheck: false;
+            margin-top: 20px;
+            width: 50%;
+        }
+        button {
+            font-size: 30px;
+            padding: 10px 20px;
+            margin: 10px;
+        }
+        #result.correct {
+            color: green;
+        }
+        #result.incorrect {
+            color: red;
+            font-weight: bold;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-line;
+        }
+        #exampleSentence {
+            margin-top: 10px;
+            font-size: 30px;
+            color: blue;
+        }
+        #wordDefinition {
+            margin-top: 10px;
+            font-size: 24px;
+            color: darkgreen;
+            width: 66.67%;
+        }
+        #groupStats {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+        #groupStatsTable {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        #groupStatsTable th, #groupStatsTable td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        #msgBox {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: url('pics/backgd02.jpg') no-repeat center center;
+            background-size: cover;
+            padding: 20px;
+            border: 2px solid black;
+            z-index: 1000;
+            text-align: center;
+            color: white;
+        }
+        #version {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 16px;
+            color: black;
+        }
+        .rate-adjustment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 70%;
+            margin-top: 10px;
+        }
+        .rate-adjustment label {
+            margin-right: 10px;
+        }
+        .rate-adjustment input[type="range"] {
+            margin: 0 10px;
+        }
+    </style>
+  </style>
+  <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+      import { getDatabase, ref, get, child, update } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+      import firebaseConfig from './firebaseConfig.js';
+
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      let words = [];
+      let currentWordIndex = 0;
+      let testedWordsToday = new Set();
+      let todayTestedCount = 0;
+      let totalTask = 0;
+      let completedToday = 0;
+
+      document.addEventListener('DOMContentLoaded', function() {
+          const wordsToShow = JSON.parse(localStorage.getItem('wordsToTest'));
+          totalTask = parseInt(localStorage.getItem('totalTask'), 10) || 0;
+          completedToday = parseInt(localStorage.getItem('completedToday'), 10) || 0;
+
+          if (wordsToShow) {
+              loadWords(wordsToShow);
+          } else {
+              fetchWords();
+          }
+      });
+
+      function loadWords(sortedWords) {
+          words = sortedWords.map(word => ({ word, totalTests: 0, correctCount: 0, incorrectCount: 0, lastTested: null }));
+          todayTestedCount = completedToday;
+          displayWord();
+      }
+
+      async function fetchWords() {
+          const wordListRef = ref(database, 'wordlist');
+          const testResultsRef = ref(database, 'testResults');
+
+          try {
+              const snapshot = await get(wordListRef);
+              const allWords = snapshot.val() || [];
+              const wordDataPromises = allWords.map((word, index) => get(child(testResultsRef, word)).then(snapshot => {
+                  const resultData = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0, lastTested: null };
+                  return { word, index, ...resultData };
+              }));
+
+              words = await Promise.all(wordDataPromises);
+              displayWord();
+          } catch (error) {
+              console.error("Error getting data: ", error);
+          }
+      }
+
+      window.displayWord = async function() {
+          if (words.length === 0) return;
+          const word = words[currentWordIndex].word;
+
+          playWord(word);
+          document.getElementById('wordNumber').innerText = `单词序列号: ${testedWordsToday.size + 1} out of ${totalTask} words`;
+          document.getElementById('spellingInput').value = '';
+          document.getElementById('spellingInput').focus();
+          document.getElementById('result').innerText = '';
+          document.getElementById('exampleSentence').innerText = '';
+          document.getElementById('playWordButton').innerText = 'Play Word';
+
+          const definition = await getDefinition(word);
+          document.getElementById('wordDefinition').innerText = definition;
+      };
+
+      window.checkSpelling = async function() {
+          const input = document.getElementById('spellingInput').value.trim().toLowerCase();
+          const word = words[currentWordIndex].word.toLowerCase();
+          const resultElement = document.getElementById('result');
+          const now = new Date().toISOString();
+
+          if (input === word) {
+              resultElement.innerText = '正确';
+              resultElement.className = 'correct';
+              saveTestResult(words[currentWordIndex].word, true, now).then(() => {
+                  currentWordIndex++;
+                  testedWordsToday.add(words[currentWordIndex].word);
+
+                  if (testedWordsToday.size + completedToday >= totalTask) {
+                      showCompletionMessage();
+                  } else {
+                      if (currentWordIndex < words.length) {
+                          setTimeout(() => {
+                              displayWord();
+                          }, 2000);
+                      } else {
+                          showCompletionMessage();
+                      }
+                  }
+              });
+          } else {
+              resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex].word}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex].word}" target="_blank">查询本单词</a>`;
+              resultElement.className = 'incorrect';
+              saveTestResult(words[currentWordIndex].word, false, now).then(() => {
+                  addToWordReview(words[currentWordIndex].word);
+              });
+          }
+      };
+
+      async function saveTestResult(word, correct, timestamp) {
+          const wordRef = child(ref(database, 'testResults'), word);
+          const snapshot = await get(wordRef);
+          const data = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0 };
+
+          if (correct) {
+              data.correctCount++;
+          } else {
+              data.incorrectCount++;
+          }
+          data.totalTests++;
+          data.lastTested = timestamp;
+
+          await update(wordRef, data);
+      }
+
+      async function addToWordReview(word) {
+          const wordReviewRef = ref(database, 'wordreview');
+          const wordRef = ref(database, `testResults/${word}`);
+          const snapshot = await get(wordReviewRef);
+          const currentWords = snapshot.val() || [];
+
+          if (!currentWords.includes(word)) {
+              currentWords.push(word);
+              await update(wordReviewRef, currentWords);
+              await update(wordRef, { dateaddtoReview: new Date().toISOString() });
+          }
+      }
+
+      async function getDefinition(word) {
+          const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+          const data = await response.json();
+          if (data.length > 0 && data[0].shortdef) {
+              return data[0].shortdef.join('; ');
+          }
+          return "No definition available.";
+      }
+
+      async function getExampleSentence(word) {
+          const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+          const data = await response.json();
+          if (data.length > 0 && data[0].def && data[0].def[0].sseq) {
+              const senses = data[0].def[0].sseq;
+              for (const sense of senses) {
+                  const dt = sense[0][1].dt;
+                  if (dt) {
+                      for (const item of dt) {
+                          if (item[0] === "vis") {
+                              let sentence = item[1][0].t;
+                              sentence = sentence.replace(/{wi}/g, '').replace(/{\/wi}/g, '');
+                              return sentence;
+                          }
+                      }
+                  }
+              }
+          }
+          return "No example sentence available.";
+      }
+
+      async function getAudioUrl(word) {
+          const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=YOUR_API_KEY`);
+          const data = await response.json();
+
+          if (data.length > 0 && data[0].hwi && data[0].hwi.prs && data[0].hwi.prs.length > 0) {
+              const sound = data[0].hwi.prs[0].sound;
+              if (sound && sound.audio) {
+                  const subdirectory = sound.audio.startsWith('bix') ? 'bix' :
+                                       sound.audio.startsWith('gg') ? 'gg' :
+                                       sound.audio.startsWith('_') || sound.audio.startsWith('1') ? 'number' : sound.audio.charAt(0);
+                  return `https://media.merriam-webster.com/audio/prons/en/us/mp3/${subdirectory}/${sound.audio}.mp3`;
+              }
+          }
+          return null;
+      }
+
+      async function playWord(word) {
+          const utterance = new SpeechSynthesisUtterance(word);
+          utterance.lang = 'en-US';
+          window.speechSynthesis.speak(utterance);
+      }
+
+      window.playMerriamWebsterVoice = async function() {
+          const word = words[currentWordIndex].word;
+          const audioUrl = await getAudioUrl(word);
+          if (audioUrl) {
+              const audio = new Audio(audioUrl);
+              audio.play();
+          }
+      }
+
+      function showCompletionMessage() {
+          const msgBox = document.getElementById('msgBox');
+          msgBox.innerHTML = `<p>恭喜你完成这组单词的测试！</p>
+                              <button onclick="window.location.href='index.html'">返回首页</button>`;
+          msgBox.style.display = 'block';
+      }
+  </script>
+</head>
+  <body>
+      <h1>Spelling Bee</h1>
+      <p id="wordNumber">单词序列号: NaN out of 50 words</p>
+
+      <div id="controls">
+          <label for="synthesisRateSlider">Rate:</label>
+          <input type="range" id="synthesisRateSlider" min="0.3" max="0.7" step="0.1" value="0.5">
+          <button id="playWordButton" onclick="displayWord()">Play Word</button>
+          <button id="playMerriamWebsterVoiceButton" onclick="playMerriamWebsterVoice()">Dictionary Voice</button>
+          <label for="mp3RateSlider">Rate:</label>
+          <input type="range" id="mp3RateSlider" min="0.5" max="0.9" step="0.1" value="0.7">
+      </div>
+
+      <p id="wordDefinition"></p> <!-- Definition will be displayed here -->
+      <input type="text" id="spellingInput" autocomplete="off" autocorrect="off" spellcheck="false">
+      <p id="result"></p>
+      <p id="exampleSentence"></p>
+      <div id="groupStats"></div>
+      <div id="msgBox">
+          <p>恭喜你完成这组单词的测试！</p>
+          <button onclick="window.location.href='index.html'">返回首页</button>
+      </div>
+      <div id="version">Voice from Merriam-Webster0.3</div>
+  </body>
+  </html>
