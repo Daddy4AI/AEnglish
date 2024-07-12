@@ -177,7 +177,7 @@
                const word = words[currentWordIndex].word;
 
                playWord(word);
-               document.getElementById('wordNumber').innerText = `单词序列号: ${testedWordsToday.size + 1} out of ${totalTask} words`;
+               document.getElementById('wordNumber').innerText = `单词序列号: ${testedWordsToday.size + 1} out of ${totalWordsToday} words`;
                document.getElementById('spellingInput').value = '';
                document.getElementById('spellingInput').focus();
                document.getElementById('result').innerText = '';
