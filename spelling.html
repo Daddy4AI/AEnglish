@@ -150,8 +150,8 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            const totalTask = localStorage.getItem('totalTask');
-            const completedToday = localStorage.getItem('completedToday');
+            let totalTask = localStorage.getItem('totalTask');
+            let completedToday = localStorage.getItem('completedToday');
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -481,6 +481,6 @@
         <p>恭喜你完成这组单词的测试！</p>
         <button onclick="window.location.href='index.html'">返回首页</button>
     </div>
-    <div id="version">Voice from Merriam-Webster0.6</div>
+    <div id="version">Voice from Merriam-Webster0.3</div>
 </body>
 </html>
