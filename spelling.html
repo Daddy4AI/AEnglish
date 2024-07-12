@@ -150,6 +150,8 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
+            const totalTask = JSON.parse(localStorage.getItem('totalWordsToday'));
+            const completedToday = JSON.parse(localStorage.getItem('wordsComp'));
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -275,6 +277,7 @@
 
             const definition = await getDefinition(word);
             document.getElementById('wordDefinition').innerText = definition;
+            updateTestStats();
         };
 
         window.checkSpelling = async function() {
@@ -329,14 +332,14 @@
             const testedWords = words.filter(w => w.totalTests > 0).length;
             const notTestedWords = words.length - testedWords;
             updateGroupStats(testedWords, notTestedWords);
-            updateTestStats();
+
         }
 
         function updateTestStats() {
-            document.getElementById('totalWordsToday').innerText = words.length + todayTestedCount;
-            document.getElementById('wordsComp').innerText = words.filter(w => w.totalTests > 0).length;
+            document.getElementById('totalWordsToday').innerText = totalTask;
+            document.getElementById('wordsComp').innerText = completedToday
             document.getElementById('todayTestedCount').innerText = todayTestedCount;
-            document.getElementById('currentWordIndex').innerText = currentWordIndex + 1;
+            document.getElementById('currentWordIndex').innerText = currentWordIndex;
             document.getElementById('totalWords').innerText = words.length;
         }
 
