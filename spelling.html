@@ -131,8 +131,6 @@
         let currentWordIndex = 0;
         let words = [];
         let todayTestedCount = 0;
-        let totalTask = 0;
-        let completedToday = 0;
         const testedWordsToday = new Set();
         const incorrectWordsSet = new Set();
 
@@ -144,8 +142,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            totalTask = parseInt(localStorage.getItem('totalTask'), 10) || 0;
-            completedToday = parseInt(localStorage.getItem('completedToday'), 10) || 0;
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -258,9 +254,11 @@
         window.displayWord = async function() {
             if (words.length === 0) return;
             const word = words[currentWordIndex].word;
+            const wordIndex = currentWordIndex + 1 + todayTestedCount;
+            const groupRelativeIndex = wordIndex;
 
             playWord(word);
-            document.getElementById('wordNumber').innerText = `单词序列号: ${testedWordsToday.size + 1} out of ${totalTask} words`;
+            document.getElementById('wordNumber').innerText = `单词序列号: ${groupRelativeIndex} out of ${words.length + todayTestedCount} words`;
             document.getElementById('spellingInput').value = '';
             document.getElementById('spellingInput').focus();
             document.getElementById('result').innerText = '';
@@ -275,6 +273,7 @@
             const input = document.getElementById('spellingInput').value.trim().toLowerCase();
             const word = words[currentWordIndex].word.toLowerCase();
             const resultElement = document.getElementById('result');
+            const playWordButton = document.getElementById('playWordButton');
             const now = new Date().toISOString();
 
             if (input === word) {
@@ -283,26 +282,30 @@
                 const exampleSentence = await getExampleSentence(words[currentWordIndex].word);
                 document.getElementById('exampleSentence').innerText = exampleSentence;
                 saveTestResult(words[currentWordIndex].word, true, now).then(() => {
+                    updateGroupStatsAfterSave();
                     currentWordIndex++;
-                    testedWordsToday.add(words[currentWordIndex].word);
+                    if (!testedWordsToday.has(words[currentWordIndex].word)) {
+                        todayTestedCount++;
+                        testedWordsToday.add(words[currentWordIndex].word);
+                    }
 
-                    if (testedWordsToday.size + completedToday >= totalTask) {
-                        showCompletionMessage();
+                    if (currentWordIndex < words.length) {
+                        setTimeout(() => {
+                            displayWord();
+                            playWord(words[currentWordIndex].word);
+                        }, 2000);
                     } else {
-                        if (currentWordIndex < words.length) {
-                            setTimeout(() => {
-                                displayWord();
-                            }, 2000);
-                        } else {
-                            showCompletionMessage();
-                        }
+                        saveIncorrectWords();
+                        showCompletionMessage();
                     }
                 });
             } else {
                 resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex].word}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex].word}" target="_blank">查询本单词</a>`;
                 resultElement.className = 'incorrect';
+                playWordButton.innerText = 'Test Again';
                 saveTestResult(words[currentWordIndex].word, false, now).then(() => {
                     addToWordReview(words[currentWordIndex].word);
+                    updateGroupStatsAfterSave();
                 });
             }
         };
@@ -314,97 +317,21 @@
             msgBox.style.display = 'block';
         }
 
-        async function saveTestResult(word, correct, timestamp) {
-            const wordRef = child(ref(database, 'testResults'), word);
-            const snapshot = await get(wordRef);
-            const data = snapshot.val() || { correctCount: 0, incorrectCount: 0, totalTests: 0 };
-
-            if (correct) {
-                data.correctCount++;
-            } else {
-                data.incorrectCount++;
-            }
-            data.totalTests++;
-            data.lastTested = timestamp;
-
-            await update(wordRef, data);
+        function updateGroupStatsAfterSave() {
+            const testedWords = words.filter(w => w.totalTests > 0).length;
+            const notTestedWords = words.length - testedWords;
+            updateGroupStats(testedWords, notTestedWords);
         }
 
-        async function addToWordReview(word) {
-            const wordReviewRef = ref(database, 'wordreview');
-            const wordRef = ref(database, `testResults/${word}`);
-            const snapshot = await get(wordReviewRef);
-            const currentWords = snapshot.val() || [];
-
-            if (!currentWords.includes(word)) {
-                currentWords.push(word);
-                await update(wordReviewRef, currentWords);
-                await update(wordRef, { dateaddtoReview: new Date().toISOString() });
-            }
-        }
-
-        async function getDefinition(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
-            if (data.length > 0 && data[0].shortdef) {
-                return data[0].shortdef.join('; ');
-            }
-            return "No definition available.";
-        }
-
-        async function getExampleSentence(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
-            if (data.length > 0 && data[0].def && data[0].def[0].sseq) {
-                const senses = data[0].def[0].sseq;
-                for (const sense of senses) {
-                    const dt = sense[0][1].dt;
-                    if (dt) {
-                        for (const item of dt) {
-                            if (item[0] === "vis") {
-                                let sentence = item[1][0].t;
-                                sentence = sentence.replace(/{wi}/g, '').replace(/{\/wi}/g, '');
-                                return sentence;
-                            }
-                        }
-                    }
-                }
-            }
-            return "No example sentence available.";
-        }
-
-        async function getAudioUrl(word) {
-            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
-            const data = await response.json();
-
-            if (data.length > 0 && data[0].hwi && data[0].hwi.prs && data[0].hwi.prs.length > 0) {
-                const sound = data[0].hwi.prs[0].sound;
-                if (sound && sound.audio) {
-                    const subdirectory = sound.audio.startsWith('bix') ? 'bix' :
-                                         sound.audio.startsWith('gg') ? 'gg' :
-                                         sound.audio.startsWith('_') || sound.audio.startsWith('1') ? 'number' : sound.audio.charAt(0);
-                    return `https://media.merriam-webster.com/audio/prons/en/us/mp3/${subdirectory}/${sound.audio}.mp3`;
-                }
-            }
-            return null;
-        }
-
-        async function playWord(word) {
-            const utterance = new SpeechSynthesisUtterance(word);
-            utterance.lang = 'en-US';
-            utterance.rate = synthesisRate;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        window.playMerriamWebsterVoice = async function() {
+        window.retryWord = function() {
             const word = words[currentWordIndex].word;
-            const audioUrl = await getAudioUrl(word);
-            if (audioUrl) {
-                const audio = new Audio(audioUrl);
-                audio.playbackRate = mp3Rate;
-                audio.play();
-            }
-        }
+            playWord(word);
+            document.getElementById('spellingInput').value = '';
+            document.getElementById('spellingInput').focus();
+            document.getElementById('result').innerText = '';
+            document.getElementById('exampleSentence').innerText = '';
+            document.getElementById('playWordButton').innerText = 'Play Word';
+        };
 
         window.updateGroupStats = function(testedWords, notTestedWords) {
             const totalTestsMap = new Map();
@@ -526,6 +453,6 @@
         <p>恭喜你完成这组单词的测试！</p>
         <button onclick="window.location.href='index.html'">返回首页</button>
     </div>
-    <div id="version">Voice from Merriam-Webster0.3</div>
+    <div id="version">Voice from Merriam-Webster0.2</div>
 </body>
 </html>
