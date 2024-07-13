@@ -150,8 +150,8 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            let totalTask = localStorage.getItem('totalTask');
-            let completedToday = localStorage.getItem('completedToday');
+            let totalWordsToday = localStorage.getItem('totalTask');
+            let wordsComp = localStorage.getItem('completedToday');
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -335,9 +335,9 @@
 
         }
 
-        function updateTestStats() {
-            document.getElementById('totalWordsToday').innerText = totalTask;
-            document.getElementById('wordsComp').innerText = completedToday
+        window.updateTestStats = function() {
+            document.getElementById('totalTask').innerText = totalWordsToday;
+            document.getElementById('completedToday').innerText = wordsComp
             document.getElementById('todayTestedCount').innerText = todayTestedCount;
             document.getElementById('currentWordIndex').innerText = currentWordIndex;
             document.getElementById('totalWords').innerText = words.length;
@@ -471,7 +471,7 @@
     <div id="groupStats"></div>
     <div id="testStats">
       <p>总测试单词数: <span id="totalTask"></span></p>
-      <p>开始时已测试单词数: <span id="wordsComp"></span></p>
+      <p>开始时已测试单词数: <span id="completedToday"></span></p>
       <p>本次测试单词数: <span id="todayTestedCount"></span></p>
       <p>当前单词序列号: <span id="currentWordIndex"></span></p>
       <p>单词总数: <span id="totalWords"></span></p>
