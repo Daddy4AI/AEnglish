@@ -402,8 +402,6 @@
             const wordsToTest = [...newWords, ...reviewWords].map(word => word.word);
 
             localStorage.setItem('wordsToTest', JSON.stringify(wordsToTest));
-            localStorage.setItem('totalTask', totalWordsToday);
-            localStorage.setItem('completedToday', wordsComp);
             window.location.href = 'spelling.html';
         };
 
