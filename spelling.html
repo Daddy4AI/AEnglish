@@ -266,7 +266,7 @@
             const groupRelativeIndex = wordIndex;
 
             playWord(word);
-            document.getElementById('wordNumber').innerText = `单词序列号: ${currentWordIndex} out of ${words.length} words`;
+            document.getElementById('wordNumber').innerText = `单词序列号: ${todayTestedCount+1} out of ${words.length} words`;
             document.getElementById('spellingInput').value = '';
             document.getElementById('spellingInput').focus();
             document.getElementById('result').innerText = '';
