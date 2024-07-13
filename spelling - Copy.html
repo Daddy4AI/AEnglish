@@ -120,14 +120,6 @@
         .rate-adjustment input[type="range"] {
             margin: 0 10px;
         }
-        #testStats {
-           font-size: 20px;
-           margin-top: 20px;
-           text-align: center;
-        }
-        #testStats p {
-           margin: 5px 0;
-        }
     </style>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
@@ -150,8 +142,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            let totalTask = localStorage.getItem('totalTask');
-            let completedToday = localStorage.getItem('completedToday');
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -268,7 +258,7 @@
             const groupRelativeIndex = wordIndex;
 
             playWord(word);
-            document.getElementById('wordNumber').innerText = `单词序列号: ${currentWordIndex} out of ${words.length} words`;
+            document.getElementById('wordNumber').innerText = `单词序列号: ${groupRelativeIndex} out of ${words.length + todayTestedCount} words`;
             document.getElementById('spellingInput').value = '';
             document.getElementById('spellingInput').focus();
             document.getElementById('result').innerText = '';
@@ -277,7 +267,6 @@
 
             const definition = await getDefinition(word);
             document.getElementById('wordDefinition').innerText = definition;
-            updateTestStats();
         };
 
         window.checkSpelling = async function() {
@@ -332,15 +321,6 @@
             const testedWords = words.filter(w => w.totalTests > 0).length;
             const notTestedWords = words.length - testedWords;
             updateGroupStats(testedWords, notTestedWords);
-
-        }
-
-        function updateTestStats() {
-            document.getElementById('totalWordsToday').innerText = totalTask;
-            document.getElementById('wordsComp').innerText = completedToday
-            document.getElementById('todayTestedCount').innerText = todayTestedCount;
-            document.getElementById('currentWordIndex').innerText = currentWordIndex;
-            document.getElementById('totalWords').innerText = words.length;
         }
 
         window.retryWord = function() {
@@ -469,18 +449,10 @@
     <p id="result"></p>
     <p id="exampleSentence"></p>
     <div id="groupStats"></div>
-    <div id="testStats">
-      <p>总测试单词数: <span id="totalTask"></span></p>
-      <p>开始时已测试单词数: <span id="wordsComp"></span></p>
-      <p>本次测试单词数: <span id="todayTestedCount"></span></p>
-      <p>当前单词序列号: <span id="currentWordIndex"></span></p>
-      <p>单词总数: <span id="totalWords"></span></p>
-    </div>
-
     <div id="msgBox">
         <p>恭喜你完成这组单词的测试！</p>
         <button onclick="window.location.href='index.html'">返回首页</button>
     </div>
-    <div id="version">Voice from Merriam-Webster0.3</div>
+    <div id="version">Voice from Merriam-Webster0.2</div>
 </body>
 </html>
