@@ -3,6 +3,29 @@
 <head>
     <title>Bee's Vocabulary Exercise</title>
     <link rel="stylesheet" type="text/css" href="styles.css">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #cover {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background-color: #f0f0f0;
+            text-align: center;
+            cursor: pointer;
+        }
+        #updateVersion {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 16px;
+            color: black;
+        }
+    </style>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
         import { getDatabase, ref, get, child, update } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
@@ -12,7 +35,7 @@
         const database = getDatabase(app);
         let wordList = [];
         let wordReview = [];
-        let totalWordsToday = 15;
+        let totalWordsToday = 15; // Updated default value
         let reviewPer = 0;
         let totalReviewWords = Math.floor(totalWordsToday * reviewPer / 100);
         let totalNewWords = totalWordsToday - totalReviewWords;
@@ -28,10 +51,10 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('loading').style.display = 'block';
-            setButtonsDisabled(true); // 禁用按钮
+            setButtonsDisabled(true); // Disable buttons
             await fetchData();
             document.getElementById('loading').style.display = 'none';
-            setButtonsDisabled(false); // 启用按钮
+            setButtonsDisabled(false); // Enable buttons
             updateStats();
             generateWordsToTest();
             displayProgressReview();
@@ -271,7 +294,11 @@
                     const cell3 = row.insertCell(2);
                     const cell4 = row.insertCell(3);
                     const cell5 = row.insertCell(4);
-                    cell1.textContent = index + 1;
+
+                    const wordListIndex = wordList.find(w => w.word === word)?.index + 1;
+                    const wordReviewIndex = wordReview.find(w => w.word === word)?.index + 1;
+
+                    cell1.textContent = wordListIndex !== undefined ? wordListIndex : (wordReviewIndex !== undefined ? wordReviewIndex : '');
                     cell2.textContent = word;
                     cell3.innerHTML = `<button onclick="playPronunciation('${word}')">Play</button>`;
                     cell4.innerHTML = `<a href="https://www.merriam-webster.com/dictionary/${word}" target="_blank">Dictionary</a>`;
@@ -346,7 +373,7 @@
         <div id="updateVersion">Update version 0001</div>
     </div>
 
-    <div id="mainContent">
+    <div id="mainContent" style="display: none;">
         <h1>Bee's Vocabulary Exercise</h1>
 
         <div id="loading">Loading data...</div>
@@ -365,9 +392,9 @@
                 <tbody>
                     <tr>
                         <td>Task</td>
-                        <td id="totalTask">15</td>
-                        <td id="newWordsTask">12</td>
-                        <td id="reviewWordsTask">3</td>
+                        <td id="totalTask">15</td> <!-- Updated default value -->
+                        <td id="newWordsTask">15</td>
+                        <td id="reviewWordsTask">0</td>
                     </tr>
                     <tr>
                         <td>Completed</td>
@@ -377,9 +404,9 @@
                     </tr>
                     <tr>
                         <td>To Be Done</td>
-                        <td id="toBeDone">15</td>
-                        <td id="newWordsTobedone">12</td>
-                        <td id="reviewWordsTobedone">3</td>
+                        <td id="toBeDone">15</td> <!-- Updated default value -->
+                        <td id="newWordsTobedone">15</td>
+                        <td id="reviewWordsTobedone">0</td>
                     </tr>
                 </tbody>
             </table>
@@ -387,7 +414,7 @@
                 <p>
                     Total Words Today:
                     <select onchange="updateTotalWordsToday(this.value)">
-                        <option value="15">15</option>
+                        <option value="15" selected>15</option>
                         <option value="17">17</option>
                         <option value="20">20</option>
                         <option value="25">25</option>
