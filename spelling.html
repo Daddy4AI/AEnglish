@@ -139,8 +139,6 @@
         let currentWordIndex = 0;
         let words = [];
         let todayTestedCount = 0;
-        let totalWordsToday = 0
-        let wordsComp = 0
         const testedWordsToday = new Set();
         const incorrectWordsSet = new Set();
 
@@ -152,8 +150,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const wordsToShow = JSON.parse(localStorage.getItem('wordsToShow'));
-            let totalWordsToday = localStorage.getItem('totalTask');
-            let wordsComp = localStorage.getItem('completedToday');
             if (wordsToShow) {
                 loadWords(wordsToShow);
             } else {
@@ -338,8 +334,6 @@
         }
 
         window.updateTestStats = function() {
-            document.getElementById('totalTask').innerText = totalWordsToday;
-            document.getElementById('completedToday').innerText = wordsComp
             document.getElementById('todayTestedCount').innerText = todayTestedCount;
             document.getElementById('currentWordIndex').innerText = currentWordIndex;
             document.getElementById('totalWords').innerText = words.length;
@@ -472,8 +466,6 @@
     <p id="exampleSentence"></p>
     <div id="groupStats"></div>
     <div id="testStats">
-      <p>总测试单词数: <span id="totalTask"></span></p>
-      <p>开始时已测试单词数: <span id="completedToday"></span></p>
       <p>本次测试单词数: <span id="todayTestedCount"></span></p>
       <p>当前单词序列号: <span id="currentWordIndex"></span></p>
       <p>单词总数: <span id="totalWords"></span></p>
