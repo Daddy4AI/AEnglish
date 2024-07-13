@@ -138,6 +138,7 @@
         let testedWords = [];
         let testedWordsTableVisible = false;
 
+        localStorage.clear()
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('loading').style.display = 'block';
             setButtonsDisabled(true); // 禁用按钮
@@ -493,7 +494,7 @@
                 <p>
                     Total Words Today:
                     <select onchange="updateTotalWordsToday(this.value)">
-                        <option value="4">4</option>
+                        <option value="15">15</option>
                         <option value="17">17</option>
                         <option value="20">20</option>
                         <option value="25">25</option>
