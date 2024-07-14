@@ -268,42 +268,43 @@
         };
 
         window.checkSpelling = async function() {
-            const input = document.getElementById('spellingInput').value.trim().toLowerCase();
-            const word = words[currentWordIndex].toLowerCase();
-            const resultElement = document.getElementById('result');
-            const playWordButton = document.getElementById('playWordButton');
-            const now = new Date().toISOString();
+          const input = document.getElementById('spellingInput').value.trim().toLowerCase();
+          const word = words[currentWordIndex].toLowerCase();
+          const resultElement = document.getElementById('result');
+          const playWordButton = document.getElementById('playWordButton');
+          const now = new Date().toISOString();
 
-            if (input === word) {
-                resultElement.innerText = '正确';
-                resultElement.className = 'correct';
-                const exampleSentence = await getExampleSentence(words[currentWordIndex]);
-                document.getElementById('exampleSentence').innerText = exampleSentence;
-                saveTestResult(words[currentWordIndex], true, now).then(() => {
-                    currentWordIndex++;
-                    if (!testedWordsToday.has(words[currentWordIndex])) {
-                        todayTestedCount++;
-                        testedWordsToday.add(words[currentWordIndex]);
-                    }
+          if (input === word) {
+              resultElement.innerText = '正确';
+              resultElement.className = 'correct';
+              const exampleSentence = await getExampleSentence(words[currentWordIndex]);
+              document.getElementById('exampleSentence').innerText = exampleSentence;
+              saveTestResult(words[currentWordIndex], true, now).then(() => {
+                  currentWordIndex++;
+                  if (!testedWordsToday.has(words[currentWordIndex])) {
+                      todayTestedCount++;
+                      testedWordsToday.add(words[currentWordIndex]);
+                  }
 
-                    if (currentWordIndex < words.length) {
-                        setTimeout(() => {
-                            displayWord();
-                            playWord(words[currentWordIndex]);
-                        }, 2000);
-                    } else {
-                        saveIncorrectWords();
-                        showCompletionMessage();
-                    }
-                });
-            } else {
-                resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex]}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex]}" target="_blank">查询本单词</a>`;
-                resultElement.className = 'incorrect';
-                playWordButton.innerText = 'Test Again';
-                saveTestResult(words[currentWordIndex], false, now).then(() => {
-                    addToWordReview(words[currentWordIndex]);
-                });
-            }
+                  if (currentWordIndex < words.length) {
+                      setTimeout(() => {
+                          displayWord();
+                          playWord(words[currentWordIndex]);
+                      }, 2000);
+                  } else {
+                      showCompletionMessage();
+                  }
+              });
+          } else {
+              resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex]}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex]}" target="_blank">查询本单词</a>`;
+              resultElement.className = 'incorrect';
+              playWordButton.innerText = 'Test Again';
+              saveTestResult(words[currentWordIndex], false, now).then(() => {
+                  addToWordReview(words[currentWordIndex]);
+              });
+              incorrectWordsSet.add(words[currentWordIndex]); // 添加错误的单词到 set
+              saveIncorrectWords(); // 保存错误的单词
+          }
         };
 
         function showCompletionMessage() {
@@ -330,9 +331,21 @@
         };
 
         window.saveIncorrectWords = function() {
-            const incorrectWords = Array.from(incorrectWordsSet);
             const wordReviewRef = ref(database, 'wordreview');
-            set(wordReviewRef, incorrectWords);
+            try {
+                const snapshot = await get(wordReviewRef);
+                const currentWords = snapshot.val() || [];
+
+                // 合并现有的单词和新添加的错误单词
+                const updatedWords = Array.from(new Set([
+                    ...currentWords,
+                    ...Array.from(incorrectWordsSet).filter(word => !currentWords.includes(word))
+                ]));
+
+                await set(wordReviewRef, updatedWords);
+            } catch (error) {
+                console.error("Error saving incorrect words: ", error);
+            }
         };
 
         window.addToWordReview = async function(word) {
@@ -351,6 +364,7 @@
             } catch (error) {
                 console.error("Error adding word to review list: ", error);
             }
+          
         };
 
         window.addEventListener('keydown', function(event) {
