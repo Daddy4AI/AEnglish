@@ -36,7 +36,7 @@
         let wordList = [];
         let wordReview = [];
         let totalWordsToday = 15; // Updated default value
-        let reviewPer = 0;
+        let reviewPer = 20;
         let totalReviewWords = Math.floor(totalWordsToday * reviewPer / 100);
         let totalNewWords = totalWordsToday - totalReviewWords;
         let wordsComp = 0;
@@ -393,8 +393,8 @@
                     <tr>
                         <td>Task</td>
                         <td id="totalTask">15</td> <!-- Updated default value -->
-                        <td id="newWordsTask">15</td>
-                        <td id="reviewWordsTask">0</td>
+                        <td id="newWordsTask">12</td>
+                        <td id="reviewWordsTask">3</td>
                     </tr>
                     <tr>
                         <td>Completed</td>
@@ -405,8 +405,8 @@
                     <tr>
                         <td>To Be Done</td>
                         <td id="toBeDone">15</td> <!-- Updated default value -->
-                        <td id="newWordsTobedone">15</td>
-                        <td id="reviewWordsTobedone">0</td>
+                        <td id="newWordsTobedone">12</td>
+                        <td id="reviewWordsTobedone">3</td>
                     </tr>
                 </tbody>
             </table>
@@ -421,8 +421,8 @@
                     </select>
                     Total Review Words Percentage:
                     <select onchange="updateReviewPer(this.value)">
-                        <option value="0" selected>0%</option>
-                        <option value="20">20%</option>
+                        <option value="0">0%</option>
+                        <option value="20" selected>20%</option>
                         <option value="30">30%</option>
                         <option value="40">40%</option>
                         <option value="50%">50%</option>
