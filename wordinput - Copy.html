@@ -86,34 +86,26 @@
 
         document.getElementById('upload').addEventListener('change', handleFileUpload);
 
-    async function handleFileUpload(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        const selectedList = document.getElementById('wordListSelector').value;
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            const selectedList = document.getElementById('wordListSelector').value;
 
-        reader.onload = async function(event) {
-            const newWords = event.target.result.split(/\r?\n/).map(word => word.trim()).filter(word => word.length > 0);
-            const wordListRef = ref(database, `wordlist/${selectedList}`);
+            reader.onload = async function(event) {
+                const words = event.target.result.split(/\r?\n/).map(word => word.trim()).filter(word => word.length > 0);
+                const wordListRef = ref(database, `wordlist/${selectedList}`);
 
-        try {
-            // Fetch existing word list
-            const snapshot = await get(wordListRef);
-            const existingWords = snapshot.val() || [];
+                try {
+                    await set(wordListRef, words);
+                    alert("Words uploaded successfully!");
+                } catch (error) {
+                    console.error("Error uploading words: ", error);
+                    alert("Error uploading words.");
+                }
+            };
 
-            // Combine existing words with new words
-            const combinedWords = Array.isArray(existingWords) ? existingWords.concat(newWords) : newWords;
-
-            // Update the word list in Firebase with combined words
-            await set(wordListRef, combinedWords);
-            alert("Words uploaded and added successfully!");
-        } catch (error) {
-            console.error("Error uploading and appending words: ", error);
-            alert("Error uploading and appending words.");
+            reader.readAsText(file);
         }
-        };
-
-     reader.readAsText(file);
-    }
 
         window.clearWordlist = async function() {
             const selectedList = document.getElementById('wordListSelector').value;
