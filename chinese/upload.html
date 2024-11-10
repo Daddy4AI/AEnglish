@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload CSV to Firebase</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4caf50;
+            text-align: center;
+            color: white;
+            line-height: 20px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px 0;
+            background-color: #f1f1f1;
+            font-size: 12px;
+            color: gray;
+            box-shadow: 0px -1px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <main>
+        <h1>Upload CSV Files to Firebase</h1>
+
+        <h2>Upload Word Lists</h2>
+        <input type="file" id="wordlistsFileInput" accept=".csv"> <!-- ID must be all lowercase -->
+        <button id="uploadWordListsButton">Upload Word Lists</button>
+        <div class="progress-container">
+            <div id="wordListsProgress" class="progress-bar"></div>
+        </div>
+        <p id="wordListsStatus"></p>
+
+        <h2>Upload Categories</h2>
+        <input type="file" id="categoriesFileInput" accept=".csv"> <!-- ID must be all lowercase -->
+        <button id="uploadCategoriesButton">Upload Categories</button>
+        <div class="progress-container">
+            <div id="categoriesProgress" class="progress-bar"></div>
+        </div>
+        <p id="categoriesStatus"></p>
+
+        <h2>Upload Words</h2>
+        <input type="file" id="wordsFileInput" accept=".csv"> <!-- ID must be all lowercase -->
+        <button id="uploadWordsButton">Upload Words</button>
+        <div class="progress-container">
+            <div id="wordsProgress" class="progress-bar"></div>
+        </div>
+        <p id="wordsStatus"></p>
+    </main>
+
+    <!-- Footer with version information -->
+    <footer>
+        Version 0001
+    </footer>
+
+    <!-- Load Firebase SDKs and initialize after DOM -->
+    <script type="module">
+        import { firebaseConfig } from './firebaseConfig.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-database.js";
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        function updateProgressBar(progressBarId, percentage) {
+            const progressBar = document.getElementById(progressBarId);
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+        }
+
+        function uploadCSVFile(refPath, progressBarId, statusId) {
+            const fileInput = document.getElementById(refPath.toLowerCase() + 'FileInput'); // Matches with HTML IDs
+            
+            if (!fileInput) {
+                console.error(`No element found with ID ${refPath.toLowerCase() + 'FileInput'}`);
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                console.error("No file selected.");
+                alert('Please select a file first.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csv = event.target.result;
+                const lines = csv.split('\n');
+                const totalLines = lines.length - 1;
+                let processedLines = 0;
+
+                lines.forEach((line, index) => {
+                    if (index === 0 || line.trim() === '') return;
+                    const values = line.split(',');
+                    const entry = {};
+
+                    if (refPath === 'WordLists') {
+                        entry['list_id'] = values[0].trim();
+                        entry['list_name'] = values[1].trim();
+                    } else if (refPath === 'Categories') {
+                        entry['category_id'] = values[0].trim();
+                        entry['category_name'] = values[1].trim();
+                    } else if (refPath === 'Words') {
+                        entry['word_id'] = values[0].trim();
+                        entry['word_text'] = values[1].trim();
+                        entry['list_id'] = values[2].trim();
+                        entry['category_id'] = values[3].trim();
+                    }
+
+                    const dbRef = ref(database, refPath + '/' + values[0].trim());
+                    set(dbRef, entry).then(() => {
+                        processedLines++;
+                        const percentage = Math.round((processedLines / totalLines) * 100);
+                        updateProgressBar(progressBarId, percentage);
+
+                        if (processedLines === totalLines) {
+                            document.getElementById(statusId).textContent = 'Upload complete for ' + refPath;
+                        }
+                    }).catch((error) => {
+                        document.getElementById(statusId).textContent = 'Upload failed: ' + error.message;
+                    });
+                });
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        document.getElementById('uploadWordListsButton').addEventListener('click', () => {
+            uploadCSVFile('WordLists', 'wordListsProgress', 'wordListsStatus');
+        });
+        document.getElementById('uploadCategoriesButton').addEventListener('click', () => {
+            uploadCSVFile('Categories', 'categoriesProgress', 'categoriesStatus');
+        });
+        document.getElementById('uploadWordsButton').addEventListener('click', () => {
+            uploadCSVFile('Words', 'wordsProgress', 'wordsStatus');
+        });
+    </script>
+</body>
+</html>

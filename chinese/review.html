@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Words</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: url('pics/backgd03.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-top: 20px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .word-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 40vh;
+            width: 80%;
+            font-size: 100px;
+            text-align: center;
+        }
+
+        .word-index {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            font-size: 30px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            transform: scale(2); /* Double the size of the checkbox */
+            margin-right: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            margin-top: 20px;
+        }
+
+        button {
+            font-size: 1.5em;
+            padding: 10px 20px;
+        }
+
+        .start-review-container {
+            margin-top: 20px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .start-review-container button {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>錯誤的單詞一定要全對哦</h1>
+
+    <div class="word-container" id="wordContainer">
+        <!-- Word will be displayed here -->
+    </div>
+
+    <div class="word-index" id="wordIndex">
+        <!-- Word index will be displayed here -->
+    </div>
+
+    <div class="checkbox-container">
+        <input type="checkbox" id="wordCheckbox">
+        <label for="wordCheckbox">繼續復習</label>
+    </div>
+
+    <div class="controls">
+        <button id="prevButton">上一个</button>
+        <button id="nextButton">下一个</button>
+    </div>
+
+    <div class="start-review-container">
+        <button id="startReviewButton">开始复习</button>
+    </div>
+
+    <script>
+        const words = JSON.parse(sessionStorage.getItem('filteredWords')) || [];
+        let currentIndex = 0;
+        const wordContainer = document.getElementById('wordContainer');
+        const wordIndex = document.getElementById('wordIndex');
+        const wordCheckbox = document.getElementById('wordCheckbox');
+
+        function displayWord() {
+            if (words.length > 0 && words[currentIndex]) {
+                wordContainer.textContent = words[currentIndex].word_text;
+                wordIndex.textContent = `${currentIndex + 1} of ${words.length}个单词`;
+                wordCheckbox.checked = false;
+            } else {
+                wordContainer.textContent = "No words available";
+                wordCheckbox.disabled = true;
+            }
+        }
+
+        document.getElementById('prevButton').addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                displayWord();
+            }
+        });
+
+        document.getElementById('nextButton').addEventListener('click', () => {
+            if (currentIndex < words.length - 1) {
+                currentIndex++;
+                displayWord();
+            }
+        });
+
+        wordCheckbox.addEventListener('change', (event) => {
+            let reviewList = JSON.parse(sessionStorage.getItem('reviewList')) || [];
+            const selectedWord = words[currentIndex];
+
+            if (event.target.checked) {
+                if (!reviewList.some(word => word.word_id === selectedWord.word_id)) {
+                    reviewList.push(selectedWord);
+                }
+            } else {
+                reviewList = reviewList.filter(word => word.word_id !== selectedWord.word_id);
+            }
+
+            sessionStorage.setItem('reviewList', JSON.stringify(reviewList));
+        });
+
+        document.getElementById('startReviewButton').addEventListener('click', () => {
+            const reviewList = JSON.parse(sessionStorage.getItem('reviewList')) || [];
+            sessionStorage.setItem('filteredWords', JSON.stringify(reviewList));
+            window.location.href = 'practice.html';
+        });
+
+        // Initialize the first word display
+        displayWord();
+    </script>
+</body>
+</html>
