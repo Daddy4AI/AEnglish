@@ -132,6 +132,8 @@
         let todayTestedCount = 0;
         const testedWordsToday = new Set();
         const incorrectWordsSet = new Set();
+        const correctSounds = ['correct01.wav', 'correct02.wav', 'correct03.wav', 'correct04.wav'];
+        const errorSounds = ['error01.wav', 'error02.wav', 'error03.wav'];
 
         const apiKey = '4c841aa5-4903-4de1-80d6-b81c397935a9';
 
@@ -184,6 +186,15 @@
 
             displayWord();
         }
+        function playSound(soundArray) {
+            // 从数组中随机选择一个声音文件
+            const randomSound = soundArray[Math.floor(Math.random() * soundArray.length)];
+    
+            // 创建 Audio 对象并播放声音
+            const audio = new Audio(`sounds/${randomSound}`);
+            audio.play();
+        }
+
 
         async function getDefinition(word) {
             const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${apiKey}`);
@@ -279,6 +290,7 @@
                 resultElement.className = 'correct';
                 const exampleSentence = await getExampleSentence(words[currentWordIndex]);
                 document.getElementById('exampleSentence').innerText = exampleSentence;
+                playSound(correctSounds);
                 saveTestResult(words[currentWordIndex], true, now).then(() => {
                     currentWordIndex++;
                     if (!testedWordsToday.has(words[currentWordIndex])) {
@@ -296,6 +308,7 @@
                     }
                 });
             } else {
+                playSound(errorSounds);
                 resultElement.innerHTML = `错误，正确的拼写为 <strong>${words[currentWordIndex]}</strong>\n<a href="https://www.merriam-webster.com/dictionary/${words[currentWordIndex]}" target="_blank">查询本单词</a>`;
                 resultElement.className = 'incorrect';
                 playWordButton.innerText = 'Test Again';
