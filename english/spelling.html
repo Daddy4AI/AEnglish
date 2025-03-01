@@ -286,11 +286,12 @@
             const now = new Date().toISOString();
 
             if (input === word) {
+                playSound(correctSounds);
                 resultElement.innerText = '正确';
                 resultElement.className = 'correct';
                 const exampleSentence = await getExampleSentence(words[currentWordIndex]);
                 document.getElementById('exampleSentence').innerText = exampleSentence;
-                playSound(correctSounds);
+                
                 saveTestResult(words[currentWordIndex], true, now).then(() => {
                     currentWordIndex++;
                     if (!testedWordsToday.has(words[currentWordIndex])) {
