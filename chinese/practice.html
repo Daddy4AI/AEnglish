@@ -136,6 +136,76 @@
 
         // Start playing the first word
         playWord();
+
+// Voice command integration
+if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+        console.error('Browser does not support Speech Recognition API');
+    } else {
+        // Voice recognition setup
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = 'zh-CN'; // Default to Chinese, change to 'en-US' if preferred
+
+        // Command variations for fuzzy matching
+        const nextCommands = ['next', 'next page', '下一个', '下一页', '下页', '前进'];
+        const previousCommands = ['back', 'previous', '上一个', '前面一个', '上一页', '后退'];
+        const repeatCommands = ['repeat', '再说一次', '重复', '再来一次'];
+
+        // Check command matches
+        function isNextCommand(transcript) {
+            return nextCommands.some(command => transcript.toLowerCase().includes(command));
+        }
+        function isPreviousCommand(transcript) {
+            return previousCommands.some(command => transcript.toLowerCase().includes(command));
+        }
+        function isRepeatCommand(transcript) {
+            return repeatCommands.some(command => transcript.toLowerCase().includes(command));
+        }
+
+        // When speech is recognized
+        recognition.onresult = (event) => {
+            const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            console.log('Recognized:', transcript);
+
+            if (isNextCommand(transcript)) {
+                const nextButton = document.getElementById('nextButton');
+                if (nextButton) nextButton.click();
+            } else if (isPreviousCommand(transcript)) {
+                const prevButton = document.getElementById('prevButton');
+                if (prevButton) prevButton.click();
+            } else if (isRepeatCommand(transcript)) {
+                const repeatButton = document.getElementById('repeatButton');
+                if (repeatButton) repeatButton.click();
+            }
+        };
+
+        // Start event
+        recognition.onstart = () => {
+            console.log('Voice recognition started. Say “next,” “back,” or “repeat” (or Chinese equivalents).');
+        };
+
+        // Error handling
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+        };
+
+        // Restart on end to keep it continuous
+        recognition.onend = () => {
+            console.log('Voice recognition stopped, restarting...');
+            recognition.start();
+        };
+
+        // Start recognition
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error('Failed to start voice recognition:', e);
+        }
+    }
+
+
+
     </script>
 </body>
 </html>
