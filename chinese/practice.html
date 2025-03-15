@@ -58,13 +58,23 @@
             color: gray;
             box-shadow: 0px -1px 5px rgba(0, 0, 0, 0.1);
         }
+
+        .status {
+            font-size: 1em;
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
-
     <div class="word-container">
         <h2 id="wordDisplay">Loading...</h2>
     </div>
+
+    <div class="status" id="voiceStatus">检查语音支持...</div>
 
     <div class="controls">
         <button id="prevButton">上一个</button>
@@ -82,30 +92,26 @@
         let words = JSON.parse(sessionStorage.getItem('filteredWords')) || [];
         let currentIndex = 0;
         const wordDisplay = document.getElementById('wordDisplay');
+        const voiceStatus = document.getElementById('voiceStatus');
 
         function playWord() {
-            // Cancel any ongoing speech synthesis
             speechSynthesis.cancel();
             console.log("Speech synthesis canceled");
 
             if (words.length > 0 && words[currentIndex]) {
                 const wordText = words[currentIndex].word_text;
                 const utterance = new SpeechSynthesisUtterance(wordText);
-
-                // Set voice to zh-CN
                 utterance.lang = 'zh-CN';
-                utterance.rate = 0.7; // Set playrate to 0.8
+                utterance.rate = 0.7;
 
                 const wordInfo = `总共${words.length}个单词中的第${currentIndex + 1}个词语`;
                 wordDisplay.textContent = wordInfo;
 
-                // Debug: Log the word being played
                 console.log(`Playing word ${currentIndex + 1}: ${wordText}`);
-
                 setTimeout(() => {
                     speechSynthesis.speak(utterance);
                     console.log("Speech synthesis started");
-                }, 500); // Slight delay to ensure speech synthesis starts correctly
+                }, 500);
             } else {
                 wordDisplay.textContent = "No words available";
                 console.warn("No words available to play");
@@ -137,75 +143,83 @@
         // Start playing the first word
         playWord();
 
-// Voice command integration
-if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
-        console.error('Browser does not support Speech Recognition API');
-    } else {
-        // Voice recognition setup
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = 'zh-CN'; // Default to Chinese, change to 'en-US' if preferred
+        // Voice command integration
+        if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+            console.error('Browser does not support Speech Recognition API');
+            voiceStatus.textContent = '此设备不支持语音命令，请使用按钮';
+        } else {
+            // Voice recognition setup
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'zh-CN';
 
-        // Command variations for fuzzy matching
-        const nextCommands = ['next', 'next page', '下一个', '下一页', '下页', '前进'];
-        const previousCommands = ['back', 'previous', '上一个', '前面一个', '上一页', '后退'];
-        const repeatCommands = ['repeat', '再说一次', '重复', '再来一次'];
+            // Command variations for fuzzy matching
+            const nextCommands = ['next', 'next page', '下一个', '下一页', '下页', '前进'];
+            const previousCommands = ['back', 'previous', '上一个', '前面一个', '上一页', '后退'];
+            const repeatCommands = ['repeat', '再说一次', '重复', '再来一次'];
 
-        // Check command matches
-        function isNextCommand(transcript) {
-            return nextCommands.some(command => transcript.toLowerCase().includes(command));
-        }
-        function isPreviousCommand(transcript) {
-            return previousCommands.some(command => transcript.toLowerCase().includes(command));
-        }
-        function isRepeatCommand(transcript) {
-            return repeatCommands.some(command => transcript.toLowerCase().includes(command));
-        }
-
-        // When speech is recognized
-        recognition.onresult = (event) => {
-            const transcript = event.results[event.results.length - 1][0].transcript.trim();
-            console.log('Recognized:', transcript);
-
-            if (isNextCommand(transcript)) {
-                const nextButton = document.getElementById('nextButton');
-                if (nextButton) nextButton.click();
-            } else if (isPreviousCommand(transcript)) {
-                const prevButton = document.getElementById('prevButton');
-                if (prevButton) prevButton.click();
-            } else if (isRepeatCommand(transcript)) {
-                const repeatButton = document.getElementById('repeatButton');
-                if (repeatButton) repeatButton.click();
+            // Check command matches
+            function isNextCommand(transcript) {
+                return nextCommands.some(command => transcript.toLowerCase().includes(command));
             }
-        };
+            function isPreviousCommand(transcript) {
+                return previousCommands.some(command => transcript.toLowerCase().includes(command));
+            }
+            function isRepeatCommand(transcript) {
+                return repeatCommands.some(command => transcript.toLowerCase().includes(command));
+            }
 
-        // Start event
-        recognition.onstart = () => {
-            console.log('Voice recognition started. Say “next,” “back,” or “repeat” (or Chinese equivalents).');
-        };
+            // When speech is recognized
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                console.log('Recognized:', transcript);
+                voiceStatus.textContent = `识别到: ${transcript}`;
 
-        // Error handling
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-        };
+                if (isNextCommand(transcript)) {
+                    const nextButton = document.getElementById('nextButton');
+                    if (nextButton) nextButton.click();
+                } else if (isPreviousCommand(transcript)) {
+                    const prevButton = document.getElementById('prevButton');
+                    if (prevButton) prevButton.click();
+                } else if (isRepeatCommand(transcript)) {
+                    const repeatButton = document.getElementById('repeatButton');
+                    if (repeatButton) repeatButton.click();
+                }
+            };
 
-        // Restart on end to keep it continuous
-        recognition.onend = () => {
-            console.log('Voice recognition stopped, restarting...');
-            recognition.start();
-        };
+            // Start event
+            recognition.onstart = () => {
+                console.log('Voice recognition started. Say “next,” “back,” or “repeat” (or Chinese equivalents).');
+                voiceStatus.textContent = '语音命令已启动，请说“下一个”、“上一个”或“重复”';
+            };
 
-        // Start recognition
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error('Failed to start voice recognition:', e);
+            // Error handling
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed') {
+                    voiceStatus.textContent = '麦克风权限被拒绝，请检查设置';
+                } else if (event.error === 'no-speech') {
+                    voiceStatus.textContent = '未检测到语音，请重试';
+                } else {
+                    voiceStatus.textContent = `语音错误: ${event.error}`;
+                }
+            };
+
+            // Restart on end to keep it continuous
+            recognition.onend = () => {
+                console.log('Voice recognition stopped, restarting...');
+                recognition.start();
+            };
+
+            // Start recognition
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Failed to start voice recognition:', e);
+                voiceStatus.textContent = `语音启动失败: ${e.message}`;
+            }
         }
-    }
-
-
-
     </script>
 </body>
 </html>
